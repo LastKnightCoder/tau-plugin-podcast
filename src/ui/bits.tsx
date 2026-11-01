@@ -1,12 +1,23 @@
 /**
- * 播客界面的小零件：说话人头像（tag 色板）、按说话人分段着色的波形、原文链接、时间格式。
+ * 播客界面的小零件：说话人头像（tag 色板）、按说话人分段着色的波形、原文链接、时间格式、
+ * 播放键图标与加载提示、纸内固定页头版式。
  */
-import { useMemo, type MouseEvent } from "react";
-import { FileText, FlaskConical, FolderKanban, Layers, type LucideIcon } from "lucide-react";
-import { cn, toast } from "@tau/ui";
+import { useMemo, type MouseEvent, type ReactNode, type Ref } from "react";
+import {
+  FileText,
+  FlaskConical,
+  FolderKanban,
+  Layers,
+  LoaderCircle,
+  Pause,
+  Play,
+  type LucideIcon,
+} from "lucide-react";
+import { FadeScroll, cn, toast } from "@tau/ui";
 import type { PluginEntityDescription } from "@tau/plugins";
 import type { Episode, ScriptLine, SourceKind, Speaker } from "../data/model";
 import { useRuntime } from "../runtime";
+import type { Playback } from "./playback";
 
 export const SOURCE_META: Record<SourceKind, { label: string; icon: LucideIcon }> = {
   card: { label: "卡片", icon: Layers },
@@ -211,5 +222,66 @@ export function SourceLink({
       />
       <span className="pc:truncate">{label}</span>
     </button>
+  );
+}
+
+/** 播放键图标：等开播或缓冲时转圈 */
+export function PlayGlyph({
+  playing,
+  loading,
+  size,
+}: {
+  playing: boolean;
+  loading: boolean;
+  size: number;
+}) {
+  if (loading) return <LoaderCircle size={size} strokeWidth={2} className="pc:animate-spin" />;
+  const Icon = playing ? Pause : Play;
+  return <Icon size={size} strokeWidth={2} />;
+}
+
+/** 播放键的读屏文案：还没开播时再点是取消 */
+export const playLabel = ({ playing, loading }: { playing: boolean; loading: boolean }) =>
+  playing ? "暂停" : loading ? "取消播放" : "播放";
+
+/** 加载进度或失败的一行提示；正常时返回 null，调用方显示原来的内容 */
+export function audioNotice(playback: Playback) {
+  if (playback.error)
+    return (
+      <span className="pc:text-danger pc:block pc:min-w-0 pc:truncate pc:text-[12px]">音频加载失败</span>
+    );
+  if (!playback.loading) return null;
+  const percent = Math.round(playback.buffered * 100);
+  return (
+    <span className="pc:text-ink-3 pc:block pc:min-w-0 pc:truncate pc:text-[12px] pc:tabular-nums">
+      正在加载音频{percent > 0 ? ` ${percent}%` : "…"}
+    </span>
+  );
+}
+
+/**
+ * 纸内版式：head 固定在纸顶，children 在 FadeScroll 里滚动；两段共用同一列宽（column 给 max-w 与横向内边距）。
+ * 固定段补上与滚动区同宽的 6px 透明右边，两段内容同宽，与行共用网格的列头才对得齐。
+ */
+export function PinnedScroll({
+  column,
+  head,
+  children,
+  scrollRef,
+}: {
+  column: string;
+  head: ReactNode;
+  children: ReactNode;
+  scrollRef?: Ref<HTMLDivElement | null>;
+}) {
+  return (
+    <>
+      <div className="pc:flex-none pc:border-r-[6px] pc:border-r-transparent">
+        <div className={cn("pc:mx-auto", column)}>{head}</div>
+      </div>
+      <FadeScroll scrollRef={scrollRef} className="pc:min-h-0 pc:flex-1">
+        <div className={cn("pc:mx-auto pc:pb-10", column)}>{children}</div>
+      </FadeScroll>
+    </>
   );
 }

@@ -3,12 +3,12 @@
  * 「⋯ › 生成播客」打开原文后，由这里弹出生成对话框（对话框留在宿主的界面树里，Esc 由宿主统一处理）。
  */
 import { useEffect, useState } from "react";
-import { ArrowUpRight, MoreHorizontal, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowUpRight, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
 import type { PluginEntityPanelProps } from "@tau/plugins";
 import { IconButton, Menu, Tooltip, toast } from "@tau/ui";
 import { sourceKey, type PickableKind } from "../data/model";
 import { useRuntime, useStore } from "../runtime";
-import { ICON, Legend, Waveform, fmtTime } from "./bits";
+import { ICON, Legend, PlayGlyph, Waveform, audioNotice, fmtTime, playLabel } from "./bits";
 import { GenerateDialog } from "./GenerateDialog";
 import { JobStatus } from "./JobStatus";
 import { usePlayback } from "./playback";
@@ -63,16 +63,12 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
           {playback.element}
           <button
             type="button"
-            aria-label={playback.playing ? "暂停" : "播放"}
-            disabled={!playback.ready}
+            aria-label={playLabel(playback)}
+            disabled={playback.error}
             onClick={playback.toggle}
             className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-9 pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
           >
-            {playback.playing ? (
-              <Pause size={16} strokeWidth={2} />
-            ) : (
-              <Play size={16} strokeWidth={2} />
-            )}
+            <PlayGlyph playing={playback.playing} loading={playback.loading} size={16} />
           </button>
           <div className="pc:min-w-0 pc:flex-1 pc:@min-[560px]/podcast:w-[200px] pc:@min-[560px]/podcast:flex-none">
             <div className="pc:truncate pc:font-medium" title={episode.title}>
@@ -83,7 +79,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
                 {playback.playing || playback.time > 0 ? `${fmtTime(playback.time)} / ` : ""}
                 {fmtTime(playback.duration || audio.duration)}
               </span>
-              <Legend speakers={audio.speakers} />
+              {audioNotice(playback) ?? <Legend speakers={audio.speakers} />}
             </div>
           </div>
           <div className="pc:order-last pc:flex pc:min-w-0 pc:basis-full pc:@min-[560px]/podcast:order-none pc:@min-[560px]/podcast:flex-1 pc:@min-[560px]/podcast:basis-0">
