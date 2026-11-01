@@ -1,0 +1,40 @@
+{
+  "name": "tau-plugin-podcast",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "pnpm check && node build.mjs",
+    "install:local": "node install-local.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "5.90.16",
+    "@tau/plugins": "npm:@xiongtao.xt/tau-plugins@0.54.0",
+    "@tau/ui": "npm:@xiongtao.xt/tau-ui@0.6.0",
+    "lucide-react": "0.563.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/node": "4.1.17",
+    "@tailwindcss/oxide": "4.1.17",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "adm-zip": "0.5.16",
+    "esbuild": "0.25.12",
+    "tailwindcss": "4.1.17",
+    "typescript": "5.8.3",
+    "vitest": "3.2.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LastKnightCoder/tau-plugin-podcast.git"
+  }
+}
