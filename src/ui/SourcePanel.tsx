@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { ArrowUpRight, MoreHorizontal, Pause, Play, RefreshCw, Trash2 } from "lucide-react";
 import type { PluginEntityPanelProps } from "@tau/plugins";
 import { IconButton, Menu, Tooltip, toast } from "@tau/ui";
-import { sourceKey, type SourceKind } from "../data/model";
+import { sourceKey, type PickableKind } from "../data/model";
 import { useRuntime, useStore } from "../runtime";
 import { ICON, Legend, Waveform, fmtTime } from "./bits";
 import { GenerateDialog } from "./GenerateDialog";
@@ -17,7 +17,7 @@ import { useEpisodeBySource } from "./queries";
 export function SourcePanel({ target }: PluginEntityPanelProps) {
   const runtime = useRuntime();
   const { context, pendingDialog, pages } = runtime;
-  const source = target as { kind: SourceKind; id: string };
+  const source = target as { kind: PickableKind; id: string };
   const key = sourceKey(source);
   const query = useEpisodeBySource(source);
   const episode = query.data ?? null;
@@ -138,5 +138,5 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
 }
 
 /** 「⋯」菜单与对话框请求只认这几类 */
-export const isSourceKind = (kind: string): kind is SourceKind =>
+export const isSourceKind = (kind: string): kind is PickableKind =>
   kind === "card" || kind === "article" || kind === "document";

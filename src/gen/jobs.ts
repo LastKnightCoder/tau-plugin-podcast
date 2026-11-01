@@ -2,6 +2,7 @@
  * 生成任务：在 activate 里创建，与页面解耦，单并发排队。阶段写进实体 meta（侧栏、面板、播客库据此显示），
  * 合成进度只放内存，避免逐段写库。已合成的段落按期缓存在内存里，失败后同一次运行内可从断点续；
  * 应用关闭后进行中的任务在下次启用时标为失败，保留草稿可重新合成。
+ * Notebook 入口的脚本由 Tau 的 Notebook 生成流程写好后交回（completeNotebook），这里只解析与合成。
  */
 import {
   PluginPermissionError,
@@ -10,8 +11,21 @@ import {
   type TTSAudio,
 } from "@tau/plugins";
 import type { EpisodeData } from "../data/episodes";
-import type { Draft, Episode, GenerationOptions, ScriptLine, SourceKind } from "../data/model";
-import { buildScriptMessages, parseScript, retime } from "./script";
+import type {
+  Draft,
+  Episode,
+  GenerationOptions,
+  PickableKind,
+  ScriptLine,
+  SourceKind,
+} from "../data/model";
+import {
+  NOTEBOOK_REMINDERS,
+  buildScriptMessages,
+  notebookInstructions,
+  parseScript,
+  retime,
+} from "./script";
 import { concat, measure, replaceSegment, saveAudio } from "./audio";
 
 export const AI_FEATURE = "script";
@@ -27,10 +41,24 @@ type Listener = () => void;
 export interface Jobs {
   /** 新建或重新生成；返回这一期的 ID */
   start(input: {
-    source: PluginEntityRef & { kind: SourceKind };
+    source: PluginEntityRef & { kind: PickableKind };
     sourceTitle: string;
     options: GenerationOptions;
   }): Promise<string>;
+  /** Notebook 入口：建好占位，返回交给 Tau 的任务要求 */
+  prepareNotebook(input: {
+    notebook: { id: string; title: string };
+    options: GenerationOptions;
+    signal: AbortSignal;
+  }): Promise<{ entity: string; instructions: string; reminders: readonly string[] }>;
+  /** Notebook 入口：Tau 写好的脚本交回后解析并合成（或停在审稿） */
+  completeNotebook(
+    id: string,
+    text: string,
+    report: { phase(text: string): void; progress(done: number, total: number): void },
+    signal: AbortSignal
+  ): Promise<void>;
+  failNotebook(id: string, reason: "cancelled" | "failed", message: string): Promise<void>;
   confirmReview(id: string, draft: Draft): Promise<void>;
   resume(id: string): Promise<void>;
   /** 取消进行中的任务，或放弃待审 / 失败的稿子；首次生成直接删掉这一期 */
@@ -45,6 +73,14 @@ const SOURCE_LABEL: Record<SourceKind, string> = {
   card: "卡片",
   article: "文章",
   document: "项目文档",
+  notebook: "Notebook",
+};
+const PHASE_TEXT: Record<LiveProgress["phase"], string> = {
+  script: "写脚本",
+  synth: "合成语音",
+  merge: "合并音频",
+  save: "保存音频",
+  line: "重新合成",
 };
 
 function message(error: unknown) {
@@ -75,6 +111,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
   };
 
   async function readSource(source: PluginEntityRef & { kind: SourceKind }) {
+    if (source.kind === "notebook") throw new Error("Notebook 的播客脚本要在 Notebook 里重新生成");
     const entity =
       source.kind === "card"
         ? await context.data.cards.get(source.id)
@@ -122,7 +159,12 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
     };
   }
 
-  async function synthesize(id: string, draft: Draft, signal: AbortSignal) {
+  async function synthesize(
+    id: string,
+    draft: Draft,
+    signal: AbortSignal,
+    report: (id: string, value: LiveProgress | null) => void = setLive
+  ) {
     const cache = segments.get(id) ?? new Map<string, TTSAudio>();
     segments.set(id, cache);
     const session = await context.tts.open({ signal });
@@ -131,7 +173,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
     try {
       for (let i = 0; i < draft.lines.length; i++) {
         signal.throwIfAborted();
-        setLive(id, { phase: "synth", done: i, total: draft.lines.length });
+        report(id, { phase: "synth", done: i, total: draft.lines.length });
         const line = draft.lines[i];
         const voiceId = draft.speakers[line.speaker]?.voiceId;
         if (!voiceId)
@@ -155,29 +197,43 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
     } finally {
       await session.close();
     }
-    setLive(id, { phase: "merge", done: draft.lines.length, total: draft.lines.length });
+    report(id, { phase: "merge", done: draft.lines.length, total: draft.lines.length });
     const merged = await concat(context, audios, signal);
-    setLive(id, { phase: "save", done: draft.lines.length, total: draft.lines.length });
+    report(id, { phase: "save", done: draft.lines.length, total: draft.lines.length });
     const url = await saveAudio(context, merged, draft.title, signal);
     const lines = retime(draft.lines, durations);
     return { url, lines, duration: lines.reduce((sum, line) => sum + line.duration, 0) };
   }
 
   function run(id: string) {
-    const task = execute(id);
+    const task = execute(id).then(() => undefined);
     settled.set(id, task);
     return task.finally(() => settled.delete(id));
   }
 
-  async function execute(id: string) {
+  /** 跑一期的任务；返回失败原因（成功、停在审稿或被取消为 null），队列不关心，Notebook 入口据此报错 */
+  async function execute(
+    id: string,
+    outer?: { signal: AbortSignal; onLive(value: LiveProgress): void }
+  ): Promise<string | null> {
     const controller = new AbortController();
     controllers.set(id, controller);
-    const signal = AbortSignal.any([controller.signal, context.signal]);
+    const signal = AbortSignal.any([
+      controller.signal,
+      context.signal,
+      ...(outer ? [outer.signal] : []),
+    ]);
+    const report = outer
+      ? (id_: string, value: LiveProgress | null) => {
+          setLive(id_, value);
+          if (value) outer.onLive(value);
+        }
+      : setLive;
     try {
       let episode = await data.get(id);
-      if (!episode) return;
+      if (!episode) return null;
       if (episode.status === "script") {
-        setLive(id, { phase: "script", done: 0, total: 0 });
+        report(id, { phase: "script", done: 0, total: 0 });
         const { draft, sourceTitle } = await writeScript(episode, signal);
         signal.throwIfAborted();
         const review = episode.options.review;
@@ -194,12 +250,12 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
               body: `「${draft.title}」等你过一遍再合成`,
               mode: "auto",
             });
-          return;
+          return null;
         }
       }
-      if (episode.status !== "synth" || !episode.draft) return;
+      if (episode.status !== "synth" || !episode.draft) return null;
       const draft = episode.draft;
-      const result = await synthesize(id, draft, signal);
+      const result = await synthesize(id, draft, signal, report);
       signal.throwIfAborted();
       const done = await data.patch(id, () => ({
         title: draft.title || episode!.title,
@@ -225,8 +281,9 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
           tone: "ok",
         });
       }
+      return null;
     } catch (error) {
-      if (signal.aborted) return;
+      if (signal.aborted) return null;
       console.error("[播客] 生成失败", error);
       const total = live.get(id)?.total ?? 0;
       const done = live.get(id)?.done ?? 0;
@@ -237,6 +294,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
           progress: total ? { done, total } : null,
         }))
         .catch(() => undefined);
+      return message(error);
     } finally {
       controllers.delete(id);
       setLive(id, null);
@@ -295,11 +353,75 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
       enqueue(episode.id);
       return episode.id;
     },
+    async prepareNotebook({ notebook, options, signal }) {
+      const session = await context.tts.open({ signal });
+      let textInstructions: string | undefined;
+      try {
+        textInstructions = session.textInstructions;
+      } finally {
+        await session.close();
+      }
+      const episode = await data.create({
+        source: { kind: "notebook", id: notebook.id },
+        sourceTitle: notebook.title,
+        options,
+        key: `notebook:${notebook.id}:${crypto.randomUUID()}`,
+      });
+      return {
+        entity: episode.id,
+        instructions: notebookInstructions({ ...options, textInstructions }),
+        reminders: NOTEBOOK_REMINDERS,
+      };
+    },
+    async completeNotebook(id, text, task, signal) {
+      const episode = await data.get(id);
+      if (!episode) throw new Error("这期播客已被删除");
+      const parsed = parseScript(text, episode.options.speakers);
+      if (!parsed.lines.length) throw new Error("没有解析出可用的对话，请重新生成");
+      const draft: Draft = {
+        title: parsed.title || episode.title,
+        speakers: episode.options.speakers,
+        lines: parsed.lines,
+      };
+      const review = episode.options.review;
+      await data.patch(id, () => ({
+        draft,
+        title: draft.title,
+        status: review ? "review" : "synth",
+        error: null,
+      }));
+      if (review) {
+        task.phase("脚本已写好，等待审稿");
+        return;
+      }
+      const failure = await execute(id, {
+        signal,
+        onLive: value => {
+          task.phase(PHASE_TEXT[value.phase]);
+          task.progress(value.done, value.total);
+        },
+      });
+      signal.throwIfAborted();
+      if (failure) throw new Error(failure);
+    },
+    async failNotebook(id, reason, failure) {
+      const episode = await data.get(id);
+      if (!episode) return;
+      if (reason === "cancelled" && !episode.audio) return data.remove(id);
+      await data.patch(id, current =>
+        current.status === "ready" || current.status === "review"
+          ? null
+          : { status: "failed", error: failure }
+      );
+    },
     async confirmReview(id, draft) {
       await data.patch(id, () => ({ draft, status: "synth", error: null }));
       enqueue(id);
     },
     async resume(id) {
+      const episode = await data.get(id);
+      if (episode?.source.kind === "notebook" && !episode.draft)
+        throw new Error("脚本没有写完，请回到 Notebook 重新生成");
       await data.patch(id, current => ({
         status: current.draft ? "synth" : "script",
         error: null,

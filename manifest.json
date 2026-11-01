@@ -1,7 +1,7 @@
 {
   "id": "tau.podcast",
   "name": "播客",
-  "description": "把卡片、文章和项目文档改写成一期多人对话播客，在播客库里收听、管理并跳回原文。",
+  "description": "把卡片、文章、项目文档和 Notebook 资料改写成一期多人对话播客，在播客库里收听、管理并跳回原文。",
   "categories": ["page"],
   "keywords": ["播客", "朗读", "对话", "听书"],
   "permissions": [
@@ -10,7 +10,7 @@
     "documents:read",
     "tts:synthesize"
   ],
-  "version": "0.1.0",
+  "version": "0.2.0",
   "targets": {
     "desktop": {
       "minAppVersion": "0.61.0"

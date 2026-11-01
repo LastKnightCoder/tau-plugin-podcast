@@ -13,43 +13,57 @@ const FORMAT_GUIDE: Record<PodcastFormat, (speakers: Speaker[]) => string> = {
     `单人讲述。${narrator.name}独自讲完全部内容，像有声书或单口电台：有开场、有层次、有总结，可以用设问引出下一部分。`,
 };
 
-export function buildScriptMessages(input: {
-  sourceTitle: string;
-  content: string;
+interface ScriptSpec {
   format: PodcastFormat;
   speakers: Speaker[];
   minutes: number;
-  focus: string;
   textInstructions?: string;
-}): PluginAIMessage[] {
-  const { speakers, minutes } = input;
-  const names = speakers.map(s => s.name).join("、");
-  const system = `你是播客脚本作者。把用户给的内容改写成一期约 ${minutes} 分钟的中文播客。
+}
 
-形式：${FORMAT_GUIDE[input.format](speakers)}
+/** 形式、写作要求与输出格式；卡片入口与 Notebook 入口共用 */
+function scriptRules({ format, speakers, minutes, textInstructions }: ScriptSpec) {
+  const names = speakers.map(s => s.name).join("、");
+  return `把内容改写成一期约 ${minutes} 分钟的中文播客。
+
+形式：${FORMAT_GUIDE[format](speakers)}
 
 写作要求：
 - 只基于给出的内容，不补充没有依据的事实；没覆盖的细节不要脑补。
-- 像在直接讲知识本身，不要出现「原文」「材料」「文中」「上文」这类说法。
+- 像在直接讲知识本身，不要出现「原文」「材料」「资料」「文中」「上文」这类说法。
 - 口语化、有情绪起伏，可以用「嗯」「其实」「你看」这类语气词，但不要堆砌。
 - 每次发言 50–150 字、表达完整的意思，不要把同一个人的一段话拆成多行。
 - 开场简短介绍主题${speakers.length > 1 ? "和说话人" : ""}，主体覆盖内容的主要部分，结尾总结要点。
 - 不写任何动作、心理或场景描述，如（笑）（停顿）（翻资料）。
-${input.textInstructions ? `- 朗读规则：${input.textInstructions}\n` : ""}
+${textInstructions ? `- 朗读规则：${textInstructions}\n` : ""}
 输出格式（严格遵守，不输出其他任何文字、标题符号或代码块）：
 第一行：标题：<这一期的标题，15 字以内，不带书名号>
 之后每行：<说话人>: <内容>
 说话人只能是：${names}`;
+}
+
+export function buildScriptMessages(
+  input: ScriptSpec & { sourceTitle: string; content: string; focus: string }
+): PluginAIMessage[] {
   const user = `内容标题：${input.sourceTitle || "未命名"}
 
 ---
 ${input.content}
 ---${input.focus.trim() ? `\n\n希望多聊的方向：${input.focus.trim()}` : ""}`;
   return [
-    { role: "system", content: system },
+    { role: "system", content: `你是播客脚本作者。${scriptRules(input)}` },
     { role: "user", content: user },
   ];
 }
+
+/** Notebook 入口：交给 Tau 的任务要求，资料由 Tau 的检索工具读取 */
+export function notebookInstructions(spec: ScriptSpec) {
+  return `你是播客脚本作者。基于检索确认过的资料内容，${scriptRules(spec)}`;
+}
+
+export const NOTEBOOK_REMINDERS = [
+  "脚本要覆盖资料的主要部分，关键事实回到原文确认",
+  "最终只输出「标题：」一行和对话行，不要输出说明、总结或代码块",
+] as const;
 
 const TITLE_PATTERN = /^\s*(?:#+\s*)?标题\s*[:：]\s*(.+)$/;
 const LINE_PATTERN = /^\s*(?:[-*]\s*)?\**([^:：*]{1,20}?)\**\s*[:：]\s*(.+)$/;

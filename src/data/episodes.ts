@@ -24,6 +24,8 @@ export interface EpisodeData {
     source: PluginEntityRef & { kind: SourceKind };
     sourceTitle: string;
     options: GenerationOptions;
+    /** 缺省为原文引用；Notebook 每次生成一期，key 另给 */
+    key?: string;
   }): Promise<Episode>;
   /** 读最新版本后改写；并发修改时重读重试 */
   patch(id: string, change: (episode: Episode) => Partial<Episode> | null): Promise<Episode | null>;
@@ -65,10 +67,10 @@ export function createEpisodeData(context: PluginContext): EpisodeData {
       });
       return page.items.flatMap(entity => readEpisode(entity) ?? []);
     },
-    async create({ source, sourceTitle, options }) {
+    async create({ source, sourceTitle, options, key }) {
       const entity = await entities.create({
         kind: EPISODE_KIND,
-        key: sourceKey(source),
+        key: key ?? sourceKey(source),
         title: sourceTitle || "未命名播客",
         meta: episodeMeta({
           source,
@@ -81,7 +83,8 @@ export function createEpisodeData(context: PluginContext): EpisodeData {
           draft: null,
         }),
       });
-      await context.links.add(entity.id, source, { role: SOURCE_ROLE });
+      // Notebook 的 output 关联由 Tau 在 prepare 之后建立
+      if (source.kind !== "notebook") await context.links.add(entity.id, source, { role: SOURCE_ROLE });
       const episode = readEpisode(entity);
       if (!episode) throw new Error("播客数据无效");
       return episode;

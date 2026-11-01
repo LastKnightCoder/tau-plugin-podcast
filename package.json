@@ -1,6 +1,6 @@
 {
   "name": "tau-plugin-podcast",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "5.90.16",
-    "@tau/plugins": "npm:@xiongtao.xt/tau-plugins@0.54.0",
+    "@tau/plugins": "npm:@xiongtao.xt/tau-plugins@0.55.0",
     "@tau/ui": "npm:@xiongtao.xt/tau-ui@0.6.0",
     "lucide-react": "0.563.0",
     "react": "19.2.0",

@@ -6,7 +6,7 @@ import { createContext, useContext, useSyncExternalStore, type ReactNode } from 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PluginContext, PluginEventType, PluginPageHandle } from "@tau/plugins";
 import { createEpisodeData, type EpisodeData } from "./data/episodes";
-import { sourceKey, type SourceKind } from "./data/model";
+import { sourceKey, type PickableKind } from "./data/model";
 import { createJobs, type Jobs } from "./gen/jobs";
 
 export const EPISODES_KEY = ["episodes"] as const;
@@ -90,8 +90,10 @@ export function createRuntime(context: PluginContext): PodcastRuntime {
   };
 }
 
-export const requestDialog = (runtime: PodcastRuntime, source: { kind: SourceKind; id: string }) =>
-  runtime.pendingDialog.set(sourceKey(source));
+export const requestDialog = (
+  runtime: PodcastRuntime,
+  source: { kind: PickableKind; id: string }
+) => runtime.pendingDialog.set(sourceKey(source));
 
 const RuntimeContext = createContext<PodcastRuntime | null>(null);
 

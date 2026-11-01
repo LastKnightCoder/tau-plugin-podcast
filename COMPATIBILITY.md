@@ -1,6 +1,6 @@
 # 兼容性与开发验证
 
-当前依赖 SDK 0.54.0、UI 0.6.0；插件版本与最低客户端版本以 manifest.json 为准。仅声明 desktop：朗读（`tts.open`）、保存资源文件（`upload.save`）、对象动作、详情区块与侧栏只在桌面提供。
+当前依赖 SDK 0.55.0、UI 0.6.0；插件版本与最低客户端版本以 manifest.json 为准。仅声明 desktop：朗读（`tts.open`）、保存资源文件（`upload.save`）、对象动作、详情区块与侧栏只在桌面提供。
 
 ## 验证与发布
 

@@ -2,7 +2,7 @@
  * 播客界面的小零件：说话人头像（tag 色板）、按说话人分段着色的波形、原文链接、时间格式。
  */
 import { useMemo, type MouseEvent } from "react";
-import { FileText, FolderKanban, Layers, type LucideIcon } from "lucide-react";
+import { FileText, FlaskConical, FolderKanban, Layers, type LucideIcon } from "lucide-react";
 import { cn, toast } from "@tau/ui";
 import type { PluginEntityDescription } from "@tau/plugins";
 import type { Episode, ScriptLine, SourceKind, Speaker } from "../data/model";
@@ -12,6 +12,7 @@ export const SOURCE_META: Record<SourceKind, { label: string; icon: LucideIcon }
   card: { label: "卡片", icon: Layers },
   article: { label: "文章", icon: FileText },
   document: { label: "项目文档", icon: FolderKanban },
+  notebook: { label: "Notebook", icon: FlaskConical },
 };
 
 /** tag 色板：文字 / 软底 / 实色，类名写全以便 Tailwind 扫描 */

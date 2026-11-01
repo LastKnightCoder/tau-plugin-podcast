@@ -6,10 +6,12 @@ import {
   type PluginPageProps,
 } from "@tau/plugins";
 import { toast } from "@tau/ui";
-import { EPISODE_INDEXES, EPISODE_KIND, PAGE_ID, type SourceKind } from "./data/model";
+import { EPISODE_INDEXES, EPISODE_KIND, PAGE_ID, type PickableKind } from "./data/model";
 import { AI_FEATURE } from "./gen/jobs";
 import { createRuntime, requestDialog, RuntimeProvider } from "./runtime";
 import { LibraryPage } from "./ui/LibraryPage";
+import { NotebookEpisodeView, NotebookOptions } from "./ui/NotebookOutput";
+import { readForm, saveForm } from "./ui/PodcastOptions";
 import { SourcePanel } from "./ui/SourcePanel";
 
 declare const __PLUGIN_META__: { id: string; name: string; version: string };
@@ -67,7 +69,7 @@ export default definePlugin({
         icon: Podcast,
         targets: ["card", "article", "document"],
         run: async target => {
-          const source = target as { kind: SourceKind; id: string };
+          const source = target as { kind: PickableKind; id: string };
           requestDialog(runtime, source);
           try {
             await context.app.open(source);
@@ -77,6 +79,34 @@ export default definePlugin({
           }
         },
       });
+      // Notebook：资料检索与写脚本走 Notebook 的生成流程，这里只给任务要求、拿回脚本后合成
+      context.notebooks.registerOutput({
+        id: "podcast",
+        title: "播客",
+        icon: Podcast,
+        description: "把选中的资料改写成一期多人对话播客",
+        kind: EPISODE_KIND,
+        options: NotebookOptions,
+        view: props => (
+          <RuntimeProvider runtime={runtime}>
+            <NotebookEpisodeView {...props} />
+          </RuntimeProvider>
+        ),
+        prepare: async ({ notebook, userPrompt, options, signal }) => {
+          const form = readForm(options);
+          const plan = await runtime.jobs.prepareNotebook({
+            notebook,
+            options: { ...form, focus: userPrompt.trim() },
+            signal,
+          });
+          await saveForm(context, form).catch(() => undefined);
+          return { ...plan, title: "播客脚本" };
+        },
+        complete: ({ entity, text, task, signal }) =>
+          runtime.jobs.completeNotebook(entity, text, task, signal),
+        fail: ({ entity, reason, message }) => runtime.jobs.failNotebook(entity, reason, message),
+      });
+
       context.views.registerEntityPanel({
         id: "podcast",
         kinds: ["card", "article", "document"],

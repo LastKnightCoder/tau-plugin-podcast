@@ -113,6 +113,8 @@ export function JobStatus({
   }
   if (episode.status === "failed") {
     const resumable = !!episode.draft;
+    // Notebook 的脚本由 Notebook 写：没写完的只能回 Notebook 重新生成
+    const retryable = resumable || episode.source.kind !== "notebook";
     return (
       <Row danger icon={<CircleAlert size={16} strokeWidth={1.75} />}>
         <div className="pc:min-w-0 pc:flex-1">
@@ -126,13 +128,15 @@ export function JobStatus({
         >
           放弃
         </Button>
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => void run(jobs.resume(episode.id), "重试失败")}
-        >
-          {resumable ? "继续合成" : "重试"}
-        </Button>
+        {retryable && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => void run(jobs.resume(episode.id), "重试失败")}
+          >
+            {resumable ? "继续合成" : "重试"}
+          </Button>
+        )}
       </Row>
     );
   }

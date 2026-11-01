@@ -22,9 +22,13 @@ export function EpisodeMenu({
   const runtime = useRuntime();
   const { context, data } = runtime;
   const busy = episode.status !== "ready";
+  const source = episode.source;
+  // Notebook 的播客要在 Notebook 里重新生成（脚本由 Notebook 的生成流程写）
+  const fromNotebook = source.kind === "notebook";
   const regenerate = async () => {
-    requestDialog(runtime, episode.source);
-    await context.app.open(episode.source);
+    if (source.kind === "notebook") return;
+    requestDialog(runtime, { kind: source.kind, id: source.id });
+    await context.app.open(source);
   };
   return (
     <Menu
@@ -47,10 +51,10 @@ export function EpisodeMenu({
           icon={<ExternalLink {...ICON} />}
           onSelect={() => void context.app.open(episode.source)}
         >
-          打开原文
+          {fromNotebook ? "打开 Notebook" : "打开原文"}
         </Menu.Item>
       )}
-      {!gone && (
+      {!gone && !fromNotebook && (
         <Menu.Item
           icon={<RefreshCw {...ICON} />}
           disabled={busy}

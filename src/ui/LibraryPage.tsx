@@ -7,7 +7,14 @@ import { useEffect, useMemo, useState } from "react";
 import { AudioLines, Maximize2, Pause, Play, Plus, Podcast, Search, X } from "lucide-react";
 import type { PluginEntityDescription, PluginPageProps } from "@tau/plugins";
 import { Button, FilterPill, IconButton, Input, Loading, Tooltip, cn } from "@tau/ui";
-import { SOURCE_KINDS, sourceKey, type Episode, type SourceKind } from "../data/model";
+import {
+  PICKABLE_KINDS,
+  SOURCE_KINDS,
+  sourceKey,
+  type Episode,
+  type PickableKind,
+  type SourceKind,
+} from "../data/model";
 import { requestDialog, useRuntime, useStore } from "../runtime";
 import { Avatars, ICON, SOURCE_META, SourceLink, Waveform, fmtDate, fmtTime, tone } from "./bits";
 import { DetailView } from "./DetailView";
@@ -155,11 +162,11 @@ function ListView({
 
   const create = async () => {
     const [picked] = await context.app.pick({
-      kinds: [...SOURCE_KINDS],
+      kinds: [...PICKABLE_KINDS],
       title: "选一篇内容生成播客",
     });
     if (!picked) return;
-    requestDialog(runtime, picked.ref as { kind: SourceKind; id: string });
+    requestDialog(runtime, picked.ref as { kind: PickableKind; id: string });
     await context.app.open(picked.ref);
   };
 

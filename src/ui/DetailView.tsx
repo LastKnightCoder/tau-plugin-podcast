@@ -31,12 +31,15 @@ export function DetailView({
   playback,
   onBack,
   onReview,
+  embedded = false,
 }: {
   episode: Episode;
   sourceState?: PluginEntityDescription;
   playback: Playback;
   onBack(): void;
   onReview(): void;
+  /** 嵌在 Notebook 阅读区：不显示「全部播客」与来源卡片，onBack 打开播客库 */
+  embedded?: boolean;
 }) {
   const runtime = useRuntime();
   const { context, data, jobs } = runtime;
@@ -58,9 +61,12 @@ export function DetailView({
       ?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [current, playback.playing]);
 
+  const source = episode.source;
+  const fromNotebook = source.kind === "notebook";
   const regenerate = async () => {
-    requestDialog(runtime, episode.source);
-    await context.app.open(episode.source);
+    if (source.kind === "notebook") return;
+    requestDialog(runtime, { kind: source.kind, id: source.id });
+    await context.app.open(source);
   };
   const download = async () => {
     try {
@@ -96,9 +102,15 @@ export function DetailView({
   return (
     <div className="pc:mx-auto pc:max-w-[760px] pc:px-8 pc:pb-10 pc:pt-5">
       <div className="pc:flex pc:items-center pc:gap-1.5">
-        <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onBack}>
-          全部播客
-        </Button>
+        {embedded ? (
+          <Button size="sm" variant="ghost" icon={ArrowUpRight} onClick={onBack}>
+            在播客库打开
+          </Button>
+        ) : (
+          <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onBack}>
+            全部播客
+          </Button>
+        )}
         <span className="pc:flex-1" />
         {audio && (
           <Tooltip content="导出音频">
@@ -147,41 +159,45 @@ export function DetailView({
         {audio && <Legend speakers={audio.speakers} />}
       </div>
 
-      <div
-        className={cn(
-          "pc:rounded-tau-md pc:mt-4 pc:flex pc:items-center pc:gap-2.5 pc:border pc:px-3 pc:py-2.5",
-          gone ? "pc:border-line-1 pc:border-dashed" : "pc:border-line-1"
-        )}
-      >
-        <span className="pc:bg-hover pc:text-ink-2 pc:grid pc:size-[30px] pc:shrink-0 pc:place-items-center pc:rounded-[8px]">
-          <SourceIcon {...ICON} />
-        </span>
-        <div className="pc:min-w-0 pc:flex-1">
-          <div className={cn("pc:truncate pc:font-medium", gone && "pc:text-ink-3")}>
-            {sourceTitle || "原文"}
+      {!embedded && (
+        <div
+          className={cn(
+            "pc:rounded-tau-md pc:mt-4 pc:flex pc:items-center pc:gap-2.5 pc:border pc:px-3 pc:py-2.5",
+            gone ? "pc:border-line-1 pc:border-dashed" : "pc:border-line-1"
+          )}
+        >
+          <span className="pc:bg-hover pc:text-ink-2 pc:grid pc:size-[30px] pc:shrink-0 pc:place-items-center pc:rounded-[8px]">
+            <SourceIcon {...ICON} />
+          </span>
+          <div className="pc:min-w-0 pc:flex-1">
+            <div className={cn("pc:truncate pc:font-medium", gone && "pc:text-ink-3")}>
+              {sourceTitle || "原文"}
+            </div>
+            <div className="pc:text-ink-3 pc:text-[12px]">
+              {gone ? "原文已删除，这期播客还能继续听" : SOURCE_META[episode.source.kind].label}
+            </div>
           </div>
-          <div className="pc:text-ink-3 pc:text-[12px]">
-            {gone ? "原文已删除，这期播客还能继续听" : SOURCE_META[episode.source.kind].label}
-          </div>
+          {!gone && (
+            <>
+              {!fromNotebook && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={RefreshCw}
+                  disabled={busy}
+                  onClick={() => void regenerate()}
+                >
+                  按原文重新生成
+                </Button>
+              )}
+              <Button size="sm" onClick={() => void context.app.open(episode.source)}>
+                {fromNotebook ? "打开 Notebook" : "打开原文"}
+                <ArrowUpRight size={14} strokeWidth={1.75} />
+              </Button>
+            </>
+          )}
         </div>
-        {!gone && (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={RefreshCw}
-              disabled={busy}
-              onClick={() => void regenerate()}
-            >
-              按原文重新生成
-            </Button>
-            <Button size="sm" onClick={() => void context.app.open(episode.source)}>
-              打开原文
-              <ArrowUpRight size={14} strokeWidth={1.75} />
-            </Button>
-          </>
-        )}
-      </div>
+      )}
 
       {episode.status !== "ready" && (
         <div className="pc:mt-3">

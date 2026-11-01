@@ -1,5 +1,6 @@
 /**
- * 播客的数据形状：一篇原文一期（实体 episode，key 为原文引用），可读脚本写进实体正文供搜索与 @ 引用，
+ * 播客的数据形状：卡片、文章、项目文档一篇一期（实体 episode，key 为原文引用）；Notebook 每次生成一期
+ * （key 为 notebook:<ID>:<UUID>，由 Tau 建 output 关联挂到 Notebook）。可读脚本写进实体正文供搜索与 @ 引用，
  * 播放用的结构化数据放 meta。重新生成期间旧音频照常可听：新稿放 draft，合成成功后才替换。
  */
 import type { JsonValue, PluginEntityRef, PluginOwnEntity } from "@tau/plugins";
@@ -8,8 +9,11 @@ export const EPISODE_KIND = "episode";
 export const SOURCE_ROLE = "source";
 export const PAGE_ID = "podcasts";
 
-export type SourceKind = "card" | "article" | "document";
-export const SOURCE_KINDS: readonly SourceKind[] = ["card", "article", "document"];
+export type SourceKind = "card" | "article" | "document" | "notebook";
+export const SOURCE_KINDS: readonly SourceKind[] = ["card", "article", "document", "notebook"];
+/** 可以从原文「⋯」菜单或播客库「新建」生成的来源；Notebook 从它自己的生成菜单进 */
+export type PickableKind = Exclude<SourceKind, "notebook">;
+export const PICKABLE_KINDS: readonly PickableKind[] = ["card", "article", "document"];
 
 export type PodcastFormat = "duo" | "panel" | "solo";
 
