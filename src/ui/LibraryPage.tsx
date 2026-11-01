@@ -94,7 +94,7 @@ export function LibraryPage({ params }: PluginPageProps) {
 
   const showDock = !episodeId && playingEpisode?.audio;
   return (
-    <div className="pc:mx-auto pc:flex pc:h-full pc:min-h-0 pc:w-full pc:max-w-[1720px] pc:flex-col pc:px-4 pc:pb-4 pc:pt-1">
+    <div className="pc:@container/library pc:mx-auto pc:flex pc:h-full pc:min-h-0 pc:min-w-0 pc:w-full pc:max-w-[1720px] pc:flex-col pc:px-4 pc:pb-4 pc:pt-1">
       <div className="pc:bg-surface pc:shadow-card pc:rounded-tau-lg pc:flex pc:min-h-0 pc:flex-1 pc:flex-col pc:overflow-hidden">
         <div className="pc:min-h-0 pc:flex-1 pc:overflow-y-auto">{body}</div>
         {playback.element}
@@ -380,7 +380,7 @@ function Dock({
 }) {
   const audio = episode.audio!;
   return (
-    <div className="pc:border-line-1 pc:bg-surface pc:flex pc:flex-none pc:items-center pc:gap-3 pc:border-t pc:px-[18px] pc:py-2.5">
+    <div className="pc:border-line-1 pc:bg-surface pc:flex pc:min-w-0 pc:flex-none pc:flex-wrap pc:items-center pc:gap-x-3 pc:gap-y-2.5 pc:border-t pc:px-[18px] pc:py-2.5">
       <button
         type="button"
         aria-label={playback.playing ? "暂停" : "播放"}
@@ -393,36 +393,40 @@ function Dock({
           <Play size={16} strokeWidth={2} />
         )}
       </button>
-      <div className="pc:w-[220px] pc:min-w-0 pc:shrink-0">
+      <div className="pc:min-w-0 pc:flex-1 pc:@min-[720px]/library:w-[220px] pc:@min-[720px]/library:flex-none">
         <div className="pc:truncate pc:font-medium">{episode.title}</div>
         <SourceLink episode={episode} state={state} />
       </div>
-      <span className="pc:text-ink-3 pc:min-w-[34px] pc:text-[11.5px] pc:tabular-nums">
-        {fmtTime(playback.time)}
-      </span>
-      <Waveform
-        small
-        bars={150}
-        lines={audio.lines}
-        speakers={audio.speakers}
-        duration={playback.duration || audio.duration}
-        progress={playback.duration ? playback.time / playback.duration : 0}
-        onSeek={playback.seek}
-      />
-      <span className="pc:text-ink-3 pc:min-w-[34px] pc:text-[11.5px] pc:tabular-nums">
-        {fmtTime(playback.duration || audio.duration)}
-      </span>
-      <RateMenu playback={playback} />
-      <Tooltip content="打开详情">
-        <IconButton aria-label="打开详情" onClick={onOpen}>
-          <Maximize2 {...ICON} />
-        </IconButton>
-      </Tooltip>
-      <Tooltip content="关闭">
-        <IconButton aria-label="关闭" onClick={onClose}>
-          <X {...ICON} />
-        </IconButton>
-      </Tooltip>
+      <div className="pc:order-last pc:flex pc:min-w-0 pc:basis-full pc:items-center pc:gap-3 pc:@min-[720px]/library:order-none pc:@min-[720px]/library:flex-1 pc:@min-[720px]/library:basis-0">
+        <span className="pc:text-ink-3 pc:shrink-0 pc:whitespace-nowrap pc:text-[11.5px] pc:tabular-nums">
+          {fmtTime(playback.time)}
+        </span>
+        <Waveform
+          small
+          bars={150}
+          lines={audio.lines}
+          speakers={audio.speakers}
+          duration={playback.duration || audio.duration}
+          progress={playback.duration ? playback.time / playback.duration : 0}
+          onSeek={playback.seek}
+        />
+        <span className="pc:text-ink-3 pc:shrink-0 pc:whitespace-nowrap pc:text-[11.5px] pc:tabular-nums">
+          {fmtTime(playback.duration || audio.duration)}
+        </span>
+      </div>
+      <div className="pc:flex pc:shrink-0 pc:items-center pc:gap-1">
+        <RateMenu playback={playback} />
+        <Tooltip content="打开详情">
+          <IconButton aria-label="打开详情" onClick={onOpen}>
+            <Maximize2 {...ICON} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip content="关闭">
+          <IconButton aria-label="关闭" onClick={onClose}>
+            <X {...ICON} />
+          </IconButton>
+        </Tooltip>
+      </div>
     </div>
   );
 }

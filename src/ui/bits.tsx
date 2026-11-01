@@ -68,11 +68,16 @@ export function Avatars({ speakers }: { speakers: Speaker[] }) {
 
 export function Legend({ speakers }: { speakers: Speaker[] }) {
   return (
-    <span className="pc:text-ink-2 pc:inline-flex pc:flex-wrap pc:items-center pc:gap-3 pc:text-[12px]">
+    <span className="pc:text-ink-2 pc:inline-flex pc:min-w-0 pc:max-w-full pc:flex-wrap pc:items-center pc:gap-x-3 pc:gap-y-1 pc:text-[12px]">
       {speakers.map((speaker, i) => (
-        <span key={i} className="pc:inline-flex pc:items-center pc:gap-1.5">
-          <i className={cn("pc:size-2 pc:rounded-full", tone(speaker.tone).solid)} />
-          {speaker.name}
+        <span
+          key={i}
+          className="pc:inline-flex pc:min-w-0 pc:max-w-full pc:items-center pc:gap-1.5"
+        >
+          <i className={cn("pc:size-2 pc:shrink-0 pc:rounded-full", tone(speaker.tone).solid)} />
+          <span className="pc:truncate" title={speaker.name}>
+            {speaker.name}
+          </span>
         </span>
       ))}
     </span>
@@ -111,6 +116,7 @@ export function Waveform({
     }
     return out;
   }, [lines, speakers, duration, bars]);
+  const barSpacing = small ? 3.5 : 4;
   const seek = (event: MouseEvent<HTMLDivElement>) => {
     if (!onSeek || !duration) return;
     const rect = event.currentTarget.getBoundingClientRect();
@@ -120,22 +126,33 @@ export function Waveform({
     <div
       onClick={seek}
       className={cn(
-        "pc:flex pc:min-w-0 pc:flex-1 pc:items-center",
-        small ? "pc:h-[22px] pc:gap-[1.5px]" : "pc:h-[34px] pc:gap-[2px]",
+        "pc:relative pc:min-w-0 pc:flex-1",
+        small ? "pc:h-[22px]" : "pc:h-[34px]",
         onSeek && "pc:cursor-pointer"
       )}
     >
-      {shape.map((bar, i) => (
-        <i
-          key={i}
-          style={{ height: `${bar.height}%` }}
-          className={cn(
-            "pc:min-w-[2px] pc:flex-1 pc:rounded-[2px]",
-            tone(bar.tone).solid,
-            i / bars < progress ? "pc:opacity-100" : "pc:opacity-30"
-          )}
-        />
-      ))}
+      <svg
+        aria-hidden="true"
+        viewBox={`0 0 ${bars * barSpacing - (barSpacing - 2)} 100`}
+        preserveAspectRatio="none"
+        className="pc:absolute pc:inset-0 pc:h-full pc:w-full"
+      >
+        {shape.map((bar, i) => (
+          <rect
+            key={i}
+            x={i * barSpacing}
+            y={(100 - bar.height) / 2}
+            width={2}
+            height={bar.height}
+            rx={1}
+            fill="currentColor"
+            className={cn(
+              tone(bar.tone).text,
+              i / bars < progress ? "pc:opacity-100" : "pc:opacity-30"
+            )}
+          />
+        ))}
+      </svg>
     </div>
   );
 }
@@ -163,7 +180,7 @@ export function SourceLink({
       <span
         title="原文已删除"
         className={cn(
-          "pc:text-ink-3 pc:inline-flex pc:min-w-0 pc:items-center pc:gap-[5px] pc:text-[12px] pc:line-through",
+          "pc:text-ink-3 pc:inline-flex pc:min-w-0 pc:max-w-full pc:items-center pc:gap-[5px] pc:text-[12px] pc:line-through",
           className
         )}
       >
@@ -183,7 +200,7 @@ export function SourceLink({
         });
       }}
       className={cn(
-        "pc:text-ink-2 pc:hover:text-accent-text pc:group pc:inline-flex pc:min-w-0 pc:items-center pc:gap-[5px] pc:text-left pc:text-[12px]",
+        "pc:text-ink-2 pc:hover:text-accent-text pc:group pc:inline-flex pc:min-w-0 pc:max-w-full pc:items-center pc:gap-[5px] pc:text-left pc:text-[12px]",
         className
       )}
     >

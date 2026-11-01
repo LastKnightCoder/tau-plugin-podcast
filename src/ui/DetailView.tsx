@@ -100,7 +100,7 @@ export function DetailView({
   const busy = episode.status !== "ready" || redoing !== null;
 
   return (
-    <div className="pc:mx-auto pc:max-w-[760px] pc:px-8 pc:pb-10 pc:pt-5">
+    <div className="pc:mx-auto pc:min-w-0 pc:max-w-[760px] pc:px-8 pc:pb-10 pc:pt-5">
       <div className="pc:flex pc:items-center pc:gap-1.5">
         {embedded ? (
           <Button size="sm" variant="ghost" icon={ArrowUpRight} onClick={onBack}>
@@ -147,7 +147,7 @@ export function DetailView({
         <h1
           title="点击改名"
           onClick={() => setRenaming(true)}
-          className="pc:mb-1.5 pc:mt-2 pc:cursor-text pc:text-[22px] pc:font-semibold pc:leading-[1.35]"
+          className="pc:mb-1.5 pc:mt-2 pc:break-words pc:cursor-text pc:text-[22px] pc:font-semibold pc:leading-[1.35]"
         >
           {episode.title}
         </h1>
@@ -162,14 +162,14 @@ export function DetailView({
       {!embedded && (
         <div
           className={cn(
-            "pc:rounded-tau-md pc:mt-4 pc:flex pc:items-center pc:gap-2.5 pc:border pc:px-3 pc:py-2.5",
+            "pc:rounded-tau-md pc:mt-4 pc:flex pc:min-w-0 pc:flex-wrap pc:items-center pc:gap-2.5 pc:border pc:px-3 pc:py-2.5",
             gone ? "pc:border-line-1 pc:border-dashed" : "pc:border-line-1"
           )}
         >
           <span className="pc:bg-hover pc:text-ink-2 pc:grid pc:size-[30px] pc:shrink-0 pc:place-items-center pc:rounded-[8px]">
             <SourceIcon {...ICON} />
           </span>
-          <div className="pc:min-w-0 pc:flex-1">
+          <div className="pc:min-w-0 pc:flex-1 pc:basis-[180px]">
             <div className={cn("pc:truncate pc:font-medium", gone && "pc:text-ink-3")}>
               {sourceTitle || "原文"}
             </div>
