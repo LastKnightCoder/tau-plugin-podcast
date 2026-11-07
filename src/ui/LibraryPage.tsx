@@ -102,6 +102,7 @@ export function LibraryPage({ params }: PluginPageProps) {
         playingId={playingEpisode?.id ?? null}
         playing={playback.playing}
         loading={playback.loading}
+        showLoading={playback.showLoading}
         onPlay={playEpisode}
         onOpen={episode => open({ episode: episode.id })}
         onReview={episode => open({ episode: episode.id, review: "1" })}
@@ -148,6 +149,7 @@ function ListView({
   playingId,
   playing,
   loading,
+  showLoading,
   onPlay,
   onOpen,
   onReview,
@@ -159,6 +161,7 @@ function ListView({
   playingId: string | null;
   playing: boolean;
   loading: boolean;
+  showLoading: boolean;
   onPlay(episode: Episode): void;
   onOpen(episode: Episode): void;
   onReview(episode: Episode): void;
@@ -296,6 +299,7 @@ function ListView({
             active={episode.id === playingId}
             playing={episode.id === playingId && playing}
             loading={episode.id === playingId && loading}
+            showLoading={episode.id === playingId && showLoading}
             onPlay={() => onPlay(episode)}
             onOpen={() => onOpen(episode)}
           />
@@ -328,6 +332,7 @@ function Row({
   active,
   playing,
   loading,
+  showLoading,
   onPlay,
   onOpen,
 }: {
@@ -336,6 +341,7 @@ function Row({
   active: boolean;
   playing: boolean;
   loading: boolean;
+  showLoading: boolean;
   onPlay(): void;
   onOpen(): void;
 }) {
@@ -371,7 +377,7 @@ function Row({
             active ? "pc:grid" : "pc:hidden pc:group-hover:grid"
           )}
         >
-          <PlayGlyph playing={playing} loading={loading} size={18} />
+          <PlayGlyph playing={playing} loading={showLoading} size={18} />
         </span>
       </button>
       <div className="pc:min-w-0">
@@ -423,7 +429,7 @@ function Dock({
         onClick={playback.toggle}
         className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-9 pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
       >
-        <PlayGlyph playing={playback.playing} loading={playback.loading} size={16} />
+        <PlayGlyph playing={playback.playing} loading={playback.showLoading} size={16} />
       </button>
       <div className="pc:min-w-0 pc:flex-1 pc:@min-[720px]/library:w-[220px] pc:@min-[720px]/library:flex-none">
         <div className="pc:truncate pc:font-medium">{episode.title}</div>

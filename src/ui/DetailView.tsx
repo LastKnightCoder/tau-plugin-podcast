@@ -231,7 +231,7 @@ export function DetailView({
                 onClick={playback.toggle}
                 className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-[46px] pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
               >
-                <PlayGlyph playing={playback.playing} loading={playback.loading} size={20} />
+                <PlayGlyph playing={playback.playing} loading={playback.showLoading} size={20} />
               </button>
               <span className="pc:text-ink-3 pc:min-w-[34px] pc:text-[11.5px] pc:tabular-nums">
                 {fmtTime(playback.time)}

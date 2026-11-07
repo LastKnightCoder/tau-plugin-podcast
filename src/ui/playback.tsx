@@ -9,6 +9,7 @@ import { useRuntime } from "../runtime";
 
 export const RATES = [0.75, 1, 1.25, 1.5, 2] as const;
 const RATE_KEY = "playbackRate";
+const LOADING_NOTICE_DELAY = 200;
 
 export interface Playback {
   element: React.ReactElement;
@@ -18,6 +19,8 @@ export interface Playback {
   error: boolean;
   /** 要播还没出声：等地址解析、等首段数据，或播放中途缓冲 */
   loading: boolean;
+  /** 等待超过 200 毫秒才显示加载反馈，避免快速开播时闪烁 */
+  showLoading: boolean;
   /** 当前位置所在缓冲段的末端占全长的比例（0–1） */
   buffered: number;
   playing: boolean;
@@ -69,6 +72,16 @@ export function usePlayback(url: string | null, fallbackDuration = 0): Playback 
   }, []);
   // 已对这次等待调用过 play()；之前的暂停是切换时停掉上一期，不算取消
   const started = useRef(false);
+  const error = resource.status === "error" || mediaError;
+  const loading = !error && ((!!url && pendingUrl === url) || (playing && stalled));
+  const [loadingNoticeUrl, setLoadingNoticeUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoadingNoticeUrl(null);
+    if (!loading) return;
+    const timer = setTimeout(() => setLoadingNoticeUrl(url), LOADING_NOTICE_DELAY);
+    return () => clearTimeout(timer);
+  }, [loading, url]);
 
   useEffect(() => {
     void context.storage.get(RATE_KEY).then(value => {
@@ -190,12 +203,12 @@ export function usePlayback(url: string | null, fallbackDuration = 0): Playback 
       }}
     />
   );
-  const error = resource.status === "error" || mediaError;
   return {
     element,
     ready: !!src && resource.status === "ready" && !mediaError,
     error,
-    loading: !error && ((!!url && pendingUrl === url) || (playing && stalled)),
+    loading,
+    showLoading: loading && !!url && loadingNoticeUrl === url,
     buffered,
     playing,
     time,

@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
 import type { PluginEntityPanelProps } from "@tau/plugins";
-import { IconButton, Menu, Tooltip, toast } from "@tau/ui";
+import { IconButton, Menu, Tooltip, cn, toast } from "@tau/ui";
 import { sourceKey, type PickableKind } from "../data/model";
 import { useRuntime, useStore } from "../runtime";
 import { ICON, Legend, PlayGlyph, Waveform, audioNotice, fmtTime, playLabel } from "./bits";
@@ -54,6 +54,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
 
   const hasJob = episode.status !== "ready";
   const audio = episode.audio;
+  const notice = audioNotice(playback);
 
   return (
     <div className="pc:@container/podcast pc:flex pc:min-w-0 pc:w-full pc:flex-col pc:gap-2">
@@ -68,7 +69,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
             onClick={playback.toggle}
             className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-9 pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
           >
-            <PlayGlyph playing={playback.playing} loading={playback.loading} size={16} />
+            <PlayGlyph playing={playback.playing} loading={playback.showLoading} size={16} />
           </button>
           <div className="pc:min-w-0 pc:flex-1 pc:@min-[560px]/podcast:w-[200px] pc:@min-[560px]/podcast:flex-none">
             <div className="pc:truncate pc:font-medium" title={episode.title}>
@@ -76,10 +77,18 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
             </div>
             <div className="pc:text-ink-3 pc:flex pc:flex-wrap pc:items-center pc:gap-x-2 pc:gap-y-1 pc:text-[12px]">
               <span className="pc:shrink-0 pc:whitespace-nowrap pc:tabular-nums">
-                {playback.playing || playback.time > 0 ? `${fmtTime(playback.time)} / ` : ""}
-                {fmtTime(playback.duration || audio.duration)}
+                {fmtTime(playback.time)} / {fmtTime(playback.duration || audio.duration)}
               </span>
-              {audioNotice(playback) ?? <Legend speakers={audio.speakers} />}
+              <span className="pc:relative pc:inline-flex pc:min-w-0 pc:max-w-full">
+                <span className={cn("pc:inline-flex pc:min-w-0", notice && "pc:invisible")}>
+                  <Legend speakers={audio.speakers} />
+                </span>
+                {notice && (
+                  <span role="status" className="pc:absolute pc:inset-0 pc:flex pc:items-center">
+                    {notice}
+                  </span>
+                )}
+              </span>
             </div>
           </div>
           <div className="pc:order-last pc:flex pc:min-w-0 pc:basis-full pc:@min-[560px]/podcast:order-none pc:@min-[560px]/podcast:flex-1 pc:@min-[560px]/podcast:basis-0">

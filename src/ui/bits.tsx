@@ -248,9 +248,11 @@ export const playLabel = ({ playing, loading }: { playing: boolean; loading: boo
 export function audioNotice(playback: Playback) {
   if (playback.error)
     return (
-      <span className="pc:text-danger pc:block pc:min-w-0 pc:truncate pc:text-[12px]">音频加载失败</span>
+      <span className="pc:text-danger pc:block pc:min-w-0 pc:truncate pc:text-[12px]">
+        音频加载失败
+      </span>
     );
-  if (!playback.loading) return null;
+  if (!playback.showLoading) return null;
   const percent = Math.round(playback.buffered * 100);
   return (
     <span className="pc:text-ink-3 pc:block pc:min-w-0 pc:truncate pc:text-[12px] pc:tabular-nums">
