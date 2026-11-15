@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, AudioLines, ChevronDown, Plus, X } from "lucide-react";
 import { Button, IconButton, Menu, cn, toast } from "@tau/ui";
 import type { Draft, Episode, ScriptLine } from "../data/model";
-import { useRuntime } from "../runtime";
+import { useEpisodeNoticeSurface, useRuntime } from "../runtime";
 import { Avatar, ICON, Legend, tone } from "./bits";
 
 /** 按中文约每分钟 260 字估算 */
@@ -17,7 +17,9 @@ const estimate = (lines: ScriptLine[]) => {
 };
 
 export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): void }) {
-  const { data, jobs } = useRuntime();
+  const { data, jobs, notices } = useRuntime();
+  useEpisodeNoticeSurface(candidate => candidate.id === episode.id);
+  useEffect(() => notices.dismissReview(episode.id), [notices, episode.id]);
   const [draft, setDraft] = useState<Draft>(() => episode.draft!);
   const dirty = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);

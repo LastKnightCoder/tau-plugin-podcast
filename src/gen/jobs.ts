@@ -27,6 +27,7 @@ import {
   retime,
 } from "./script";
 import { concat, measure, replaceSegment, saveAudio } from "./audio";
+import type { createEpisodeNotices } from "./notices";
 
 export const AI_FEATURE = "script";
 
@@ -92,7 +93,11 @@ function message(error: unknown) {
 
 const isAbort = (error: unknown) => error instanceof DOMException && error.name === "AbortError";
 
-export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
+export function createJobs(
+  context: PluginContext,
+  data: EpisodeData,
+  notices: ReturnType<typeof createEpisodeNotices>
+): Jobs {
   const listeners = new Set<Listener>();
   const live = new Map<string, LiveProgress>();
   const controllers = new Map<string, AbortController>();
@@ -244,12 +249,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
           ...(episode?.audio ? {} : { title: draft.title }),
         }));
         if (!episode || review) {
-          if (episode && review)
-            context.notifications.send({
-              title: "播客脚本写好了",
-              body: `「${draft.title}」等你过一遍再合成`,
-              mode: "auto",
-            });
+          if (episode && review) notices.announce(episode, "review");
           return null;
         }
       }
@@ -272,14 +272,10 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
       }));
       segments.delete(id);
       if (done) {
+        notices.announce(done, "ready");
         await data
           .writeScript(done)
           .catch(error => console.error("[播客] 写入脚本正文失败", error));
-        context.notifications.send({
-          title: "播客已生成",
-          body: `「${done.title}」可以收听了`,
-          tone: "ok",
-        });
       }
       return null;
     } catch (error) {
@@ -384,13 +380,14 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
         lines: parsed.lines,
       };
       const review = episode.options.review;
-      await data.patch(id, () => ({
+      const updated = await data.patch(id, () => ({
         draft,
         title: draft.title,
         status: review ? "review" : "synth",
         error: null,
       }));
       if (review) {
+        if (updated) notices.announce(updated, "review");
         task.phase("脚本已写好，等待审稿");
         return;
       }
@@ -416,6 +413,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
     },
     async confirmReview(id, draft) {
       await data.patch(id, () => ({ draft, status: "synth", error: null }));
+      notices.dismissReview(id);
       enqueue(id);
     },
     async resume(id) {
@@ -440,6 +438,7 @@ export function createJobs(context: PluginContext, data: EpisodeData): Jobs {
       if (!episode.audio) await data.remove(id);
       else
         await data.patch(id, () => ({ status: "ready", error: null, progress: null, draft: null }));
+      notices.dismissReview(id);
     },
     async redoLine(id, index, text, original) {
       if (controllers.has(id)) throw new Error("这期播客正在处理");

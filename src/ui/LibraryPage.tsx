@@ -16,7 +16,7 @@ import {
   type PickableKind,
   type SourceKind,
 } from "../data/model";
-import { requestDialog, useRuntime, useStore } from "../runtime";
+import { requestDialog, useEpisodeNoticeSurface, useRuntime, useStore } from "../runtime";
 import {
   Avatars,
   ICON,
@@ -75,7 +75,9 @@ export function LibraryPage({ params }: PluginPageProps) {
   const review = episodeId && reviewing && detail.data?.status === "review" ? detail.data : null;
   let body: React.ReactNode;
   if (review) {
-    body = <ReviewView episode={review} onBack={() => open({ episode: review.id })} />;
+    body = (
+      <ReviewView key={review.id} episode={review} onBack={() => open({ episode: review.id })} />
+    );
   } else if (episodeId) {
     body = detail.isLoading ? (
       <Loading />
@@ -185,6 +187,11 @@ function ListView({
     const sourceTitle = state?.status === "ok" ? state.title : episode.sourceTitle;
     return `${episode.title} ${sourceTitle}`.toLowerCase().includes(q);
   });
+  useEpisodeNoticeSurface(
+    episode =>
+      jobs.some(job => job.id === episode.id) ||
+      (episode.status === "ready" && shown.some(item => item.id === episode.id))
+  );
   useEffect(() => {
     if ((q || kind !== "all") && shown.length < 20 && list.hasNextPage && !list.isFetchingNextPage)
       void list.fetchNextPage();

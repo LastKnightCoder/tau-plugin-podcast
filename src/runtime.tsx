@@ -2,12 +2,19 @@
  * 插件运行时：本次启用的 context、数据层、生成任务、查询缓存与跨组件状态（待打开的生成对话框、
  * 正在播放的那一期）。组件经 useRuntime 取得。
  */
-import { createContext, useContext, useSyncExternalStore, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { PluginContext, PluginEventType, PluginPageHandle } from "@tau/plugins";
 import { createEpisodeData, type EpisodeData } from "./data/episodes";
-import { sourceKey, type PickableKind } from "./data/model";
+import { sourceKey, type Episode, type PickableKind } from "./data/model";
 import { createJobs, type Jobs } from "./gen/jobs";
+import { createEpisodeNotices } from "./gen/notices";
 
 export const EPISODES_KEY = ["episodes"] as const;
 export const REFS_KEY = ["refs"] as const;
@@ -57,6 +64,7 @@ export interface PodcastRuntime {
   context: PluginContext;
   data: EpisodeData;
   jobs: Jobs;
+  notices: ReturnType<typeof createEpisodeNotices>;
   queryClient: QueryClient;
   pages: { library?: PluginPageHandle };
   /** 「⋯ › 生成播客」后打开原文详情，由原文上方的面板弹出生成对话框 */
@@ -69,7 +77,9 @@ export function createRuntime(context: PluginContext): PodcastRuntime {
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
   const data = createEpisodeData(context);
-  const jobs = createJobs(context, data);
+  const pages: PodcastRuntime["pages"] = {};
+  const notices = createEpisodeNotices(context, data, () => pages.library);
+  const jobs = createJobs(context, data, notices);
   context.events.on(
     OWN_EVENTS,
     () => void queryClient.invalidateQueries({ queryKey: EPISODES_KEY })
@@ -83,8 +93,9 @@ export function createRuntime(context: PluginContext): PodcastRuntime {
     context,
     data,
     jobs,
+    notices,
     queryClient,
-    pages: {},
+    pages,
     pendingDialog: createStore<string | null>(null),
     player: createStore<PlayerState | null>(null),
   };
@@ -115,6 +126,11 @@ export function useRuntime(): PodcastRuntime {
   const runtime = useContext(RuntimeContext);
   if (!runtime) throw new Error("播客的组件需要在插件页面内使用");
   return runtime;
+}
+
+export function useEpisodeNoticeSurface(matches: (episode: Episode) => boolean) {
+  const { notices } = useRuntime();
+  useLayoutEffect(() => notices.trackSurface(matches), [notices, matches]);
 }
 
 export const useLive = (id: string | undefined) => {

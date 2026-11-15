@@ -7,7 +7,7 @@ import { ArrowUpRight, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
 import type { PluginEntityPanelProps } from "@tau/plugins";
 import { IconButton, Menu, Tooltip, cn, toast } from "@tau/ui";
 import { sourceKey, type PickableKind } from "../data/model";
-import { useRuntime, useStore } from "../runtime";
+import { useEpisodeNoticeSurface, useRuntime, useStore } from "../runtime";
 import { ICON, Legend, PlayGlyph, Waveform, audioNotice, fmtTime, playLabel } from "./bits";
 import { GenerateDialog } from "./GenerateDialog";
 import { JobStatus } from "./JobStatus";
@@ -19,6 +19,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
   const { context, pendingDialog, pages } = runtime;
   const source = target as { kind: PickableKind; id: string };
   const key = sourceKey(source);
+  useEpisodeNoticeSurface(episode => sourceKey(episode.source) === key);
   const query = useEpisodeBySource(source);
   const episode = query.data ?? null;
   const pending = useStore(pendingDialog);

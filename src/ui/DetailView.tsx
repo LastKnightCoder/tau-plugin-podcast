@@ -19,7 +19,7 @@ import type { PluginEntityDescription } from "@tau/plugins";
 import { Button, IconButton, Spinner, Tooltip, cn, toast } from "@tau/ui";
 import type { Episode } from "../data/model";
 import { lineAt } from "../gen/script";
-import { requestDialog, useLive, useRuntime } from "../runtime";
+import { requestDialog, useEpisodeNoticeSurface, useLive, useRuntime } from "../runtime";
 import {
   Avatar,
   ICON,
@@ -58,6 +58,7 @@ export function DetailView({
 }) {
   const runtime = useRuntime();
   const { context, data, jobs } = runtime;
+  useEpisodeNoticeSurface(candidate => candidate.id === episode.id);
   const live = useLive(episode.id);
   const audio = episode.audio;
   const gone = sourceState?.status === "missing";
