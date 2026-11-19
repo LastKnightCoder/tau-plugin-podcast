@@ -2,7 +2,7 @@
  * 审稿：合成前过一遍脚本。点说话人换人、改文字、删一句或加一句；编辑停顿后自动保存到草稿，
  * 关掉也能回来接着审。「开始合成」把当前草稿交给后台任务。
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, AudioLines, ChevronDown, Plus, X } from "lucide-react";
 import { Button, IconButton, Menu, cn, toast } from "@tau/ui";
 import type { Draft, Episode, ScriptLine } from "../data/model";
@@ -15,6 +15,42 @@ const estimate = (lines: ScriptLine[]) => {
   const seconds = Math.round((chars / 260) * 60);
   return `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
 };
+
+const fitTextareaHeight = (textarea: HTMLTextAreaElement) => {
+  textarea.style.height = "auto";
+  textarea.style.height = `${textarea.scrollHeight}px`;
+};
+
+function ScriptTextarea({ value, onChange }: { value: string; onChange(value: string): void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    if (ref.current) fitTextareaHeight(ref.current);
+  }, [value]);
+
+  useLayoutEffect(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+    let width = textarea.clientWidth;
+    const observer = new ResizeObserver(() => {
+      if (textarea.clientWidth === width) return;
+      width = textarea.clientWidth;
+      fitTextareaHeight(textarea);
+    });
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={event => onChange(event.target.value)}
+      className="pc:text-ink-1 pc:focus:bg-surface pc:focus:shadow-[0_0_0_1px_var(--tau-accent),var(--tau-focus-ring)] pc:w-full pc:resize-none pc:overflow-hidden pc:rounded-[6px] pc:border-0 pc:bg-transparent pc:px-1.5 pc:py-px pc:leading-[1.75] pc:outline-none"
+    />
+  );
+}
 
 export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): void }) {
   const { data, jobs, notices } = useRuntime();
@@ -130,14 +166,11 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
                 </Menu.Item>
               ))}
             </Menu>
-            <textarea
-              rows={Math.max(1, Math.ceil(line.text.length / 38))}
+            <ScriptTextarea
               value={line.text}
-              onChange={event => {
-                const text = event.target.value;
-                update(lines => lines.map((l, j) => (j === index ? { ...l, text } : l)));
-              }}
-              className="pc:text-ink-1 pc:focus:bg-surface pc:focus:shadow-[0_0_0_1px_var(--tau-accent),var(--tau-focus-ring)] pc:w-full pc:resize-none pc:rounded-[6px] pc:border-0 pc:bg-transparent pc:px-1.5 pc:py-px pc:leading-[1.75] pc:outline-none"
+              onChange={text =>
+                update(lines => lines.map((l, j) => (j === index ? { ...l, text } : l)))
+              }
             />
             <IconButton
               aria-label="删除这句"

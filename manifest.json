@@ -5,7 +5,7 @@
   "categories": ["page"],
   "keywords": ["播客", "朗读", "对话", "听书"],
   "permissions": ["cards:read", "articles:read", "documents:read", "tts:synthesize"],
-  "version": "0.3.2",
+  "version": "0.3.3",
   "targets": {
     "desktop": {
       "minAppVersion": "0.64.1"
