@@ -2,8 +2,6 @@
 
 ## 数据契约
 
-Tau 客户端把卡片、文章、项目文档上原有的播客迁入本插件时直接按这里的形状写库，修改字段须同步宿主迁移（`apps/desktop/src-electron/main/modules/podcast-plugin-migration.ts`）。
-
 - 实体 `episode`：卡片、文章、项目文档一篇一期，`key` 为 `<类型>:<ID>`（`card` / `article` / `document`）；Notebook 每次生成一期，`key` 为 `notebook:<Notebook ID>:<UUID>`（迁入的旧播客为 `notebook:<ID>:legacy-<笔记 ID>`）。标题为这一期的名字；正文为可读脚本（每段「**说话人**：内容」），供搜索与 @ 引用。
 - 关联：卡片、文章、项目文档的一期指向原文，`role: "source"`；Notebook 的一期由 Tau 建立指向 Notebook 的关联，`role: "output"`（Notebook 产物列表据此显示）。
 - `meta`（读取见 `src/data/model.ts` 的 `readEpisode`，写入见 `episodeMeta`）：
