@@ -2,6 +2,7 @@ import type {
   Disposable,
   PluginContext,
   PluginNotificationAction,
+  PluginNotificationOptions,
   PluginPageHandle,
 } from "@tau/plugins";
 import type { EpisodeData } from "../data/episodes";
@@ -55,7 +56,7 @@ export function createEpisodeNotices(
     };
     try {
       const title = review ? (episode.draft?.title ?? episode.title) : episode.title;
-      const options = {
+      const options: PluginNotificationOptions = {
         isOnSurface: () => [...surfaces].some(matches => matches(episode)),
         title: failed
           ? t("notice.failedTitle")
@@ -68,7 +69,7 @@ export function createEpisodeNotices(
             ? t("notice.reviewBody", { title })
             : t("notice.readyBody", { title }),
         sticky: review || failed,
-        tone: failed ? ("danger" as const) : review ? ("neutral" as const) : ("ok" as const),
+        tone: failed ? "danger" : review ? "neutral" : "ok",
         actions: [action],
       };
       const notice = context.notifications.send(options);

@@ -17,7 +17,7 @@
     }
   },
   "permissions": ["cards:read", "articles:read", "documents:read", "tts:synthesize"],
-  "version": "0.3.5",
+  "version": "0.3.6",
   "targets": {
     "desktop": {
       "minAppVersion": "0.68.0"
