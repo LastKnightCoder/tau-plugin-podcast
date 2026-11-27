@@ -4,8 +4,10 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { AudioLines, Podcast, Settings2, Sparkles } from "lucide-react";
+import { useI18n } from "@tau/plugins";
 import { Button, Dialog, DialogBody, Input, toast } from "@tau/ui";
 import type { Episode, PickableKind } from "../data/model";
+import { messages } from "../i18n";
 import { AI_FEATURE } from "../gen/jobs";
 import { useRuntime } from "../runtime";
 import { ICON, SOURCE_META } from "./bits";
@@ -38,6 +40,7 @@ export function GenerateDialog({
   onClose(): void;
 }) {
   const { context, jobs } = useRuntime();
+  const { t } = useI18n(messages);
   const [model, setModel] = useState<"loading" | "missing" | "ok">("loading");
   const [form, setForm] = useState<PodcastForm>(() => readForm(undefined));
   const [focus, setFocus] = useState("");
@@ -66,7 +69,7 @@ export function GenerateDialog({
     };
   }, [open, context, episodeId]);
 
-  const blocker = voices.kind === "ready" ? formBlocker(form) : null;
+  const blocker = voices.kind === "ready" ? formBlocker(t, form) : null;
   const ready = model === "ok" && voices.kind === "ready";
 
   const submit = async () => {
@@ -77,9 +80,9 @@ export function GenerateDialog({
       await jobs.start({ source, sourceTitle, options });
       await saveForm(context, options);
       onClose();
-      toast.success("已开始生成，可以离开这个页面");
+      toast.success(t("dialog.started"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "开始生成失败");
+      toast.error(error instanceof Error ? error.message : t("dialog.startFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +93,7 @@ export function GenerateDialog({
     model === "missing" ? (
       <>
         <Button size="sm" onClick={onClose}>
-          取消
+          {t("common.cancel")}
         </Button>
         <Button
           size="sm"
@@ -98,17 +101,17 @@ export function GenerateDialog({
           icon={Settings2}
           onClick={() => context.ai.openSettings(AI_FEATURE)}
         >
-          去选模型
+          {t("dialog.pickModel")}
         </Button>
       </>
     ) : voices.kind === "no-tts" ? (
       <Button size="sm" onClick={onClose}>
-        知道了
+        {t("dialog.acknowledge")}
       </Button>
     ) : (
       <>
         <Button size="sm" onClick={onClose}>
-          取消
+          {t("common.cancel")}
         </Button>
         <Button
           size="sm"
@@ -118,7 +121,7 @@ export function GenerateDialog({
           loading={submitting}
           onClick={() => void submit()}
         >
-          {episode?.audio ? "重新生成" : "生成"}
+          {episode?.audio ? t("dialog.regenerate") : t("dialog.generate")}
         </Button>
       </>
     );
@@ -127,26 +130,31 @@ export function GenerateDialog({
     <Dialog
       open={open}
       onOpenChange={next => !next && onClose()}
-      title={episode?.audio ? "重新生成播客" : "生成播客"}
+      title={episode?.audio ? t("dialog.title.regenerate") : t("dialog.title.generate")}
       icon={<Podcast size={16} strokeWidth={1.75} />}
       width={560}
-      impact={voices.kind === "ready" ? (blocker ?? `语音：${voices.providerName}`) : undefined}
+      impact={
+        voices.kind === "ready"
+          ? (blocker ?? t("dialog.voiceProvider", { name: voices.providerName }))
+          : undefined
+      }
       footer={footer}
     >
       <DialogBody>
         <div className="pc:flex pc:flex-col pc:gap-4 pc:pt-1">
           <div className="pc:bg-hover pc:rounded-tau-sm pc:flex pc:items-center pc:gap-2 pc:px-2.5 pc:py-2 pc:text-[12.5px]">
             <SourceIcon {...ICON} className="pc:text-ink-3 pc:shrink-0" />
-            <b className="pc:min-w-0 pc:truncate pc:font-medium">{sourceTitle || "未命名"}</b>
+            <b className="pc:min-w-0 pc:truncate pc:font-medium">
+              {sourceTitle || t("dialog.untitled")}
+            </b>
             <span className="pc:text-ink-3 pc:ml-auto pc:shrink-0 pc:text-[12px]">
-              {SOURCE_META[source.kind].label}
+              {t(SOURCE_META[source.kind].key)}
             </span>
           </div>
 
           {model === "missing" ? (
-            <Notice icon={<Sparkles {...ICON} />} title="还没给「播客脚本」选模型">
-              播客插件用 AI 把原文改写成对话脚本。在插件的 AI
-              配置里选一个已配置的模型并开启，用量计入插件的每日额度。
+            <Notice icon={<Sparkles {...ICON} />} title={t("dialog.noModel")}>
+              {t("dialog.noModelHint")}
             </Notice>
           ) : voices.kind === "no-tts" ? (
             <NoTTSNotice reason={voices.reason} />
@@ -158,12 +166,12 @@ export function GenerateDialog({
               onChange={setForm}
               voices={voices}
               extra={
-                <Field label="想多聊点什么" hint="选填">
+                <Field label={t("options.focus")} hint={t("options.focusHint")}>
                   <Input
                     size="sm"
                     value={focus}
                     maxLength={200}
-                    placeholder="例如：多举例子，少讲公式"
+                    placeholder={t("options.focusPlaceholder")}
                     onChange={event => setFocus(event.target.value)}
                   />
                 </Field>

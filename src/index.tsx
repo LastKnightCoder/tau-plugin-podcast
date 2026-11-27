@@ -7,6 +7,7 @@ import {
 } from "@tau/plugins";
 import { toast } from "@tau/ui";
 import { EPISODE_INDEXES, EPISODE_KIND, PAGE_ID, type PickableKind } from "./data/model";
+import { messages } from "./i18n";
 import { AI_FEATURE } from "./gen/jobs";
 import { createRuntime, requestDialog, RuntimeProvider } from "./runtime";
 import { LibraryPage } from "./ui/LibraryPage";
@@ -18,6 +19,7 @@ declare const __PLUGIN_META__: { id: string; name: string; version: string };
 
 export default definePlugin({
   ...__PLUGIN_META__,
+  i18n: messages,
   ai: {
     features: [
       { id: AI_FEATURE, name: "播客脚本", description: "把卡片、文章或项目文档改写成多人对话脚本" },
@@ -25,6 +27,7 @@ export default definePlugin({
   },
   create: () => ({
     activate(context) {
+      const t = context.i18n.t;
       const runtime = createRuntime(context);
       context.entities.registerKind({
         kind: EPISODE_KIND,
@@ -35,7 +38,7 @@ export default definePlugin({
       });
       const page = context.pages.register({
         id: PAGE_ID,
-        title: "播客",
+        title: messages.ref("page.title"),
         component: (props: PluginPageProps) => (
           <RuntimeProvider runtime={runtime}>
             <LibraryPage {...props} />
@@ -46,7 +49,7 @@ export default definePlugin({
 
       const item = context.sidebar.registerItem({
         id: "podcasts",
-        title: "播客",
+        title: messages.ref("page.title"),
         icon: Podcast,
         group: SIDEBAR_GROUPS.learning,
         page,
@@ -65,7 +68,7 @@ export default definePlugin({
 
       context.actions.register({
         id: "generate",
-        title: "生成播客",
+        title: t("command.generate"),
         icon: Podcast,
         targets: ["card", "article", "document"],
         run: async target => {
@@ -75,16 +78,16 @@ export default definePlugin({
             await context.app.open(source);
           } catch (error) {
             runtime.pendingDialog.set(null);
-            toast.error(error instanceof Error ? error.message : "打不开这篇内容");
+            toast.error(error instanceof Error ? error.message : t("toast.openFailed"));
           }
         },
       });
       // Notebook：资料检索与写脚本走 Notebook 的生成流程，这里只给任务要求、拿回脚本后合成
       context.notebooks.registerOutput({
         id: "podcast",
-        title: "播客",
+        title: t("page.title"),
         icon: Podcast,
-        description: "把选中的资料改写成一期多人对话播客",
+        description: t("library.empty.hint"),
         kind: EPISODE_KIND,
         options: NotebookOptions,
         view: props => (
@@ -100,7 +103,7 @@ export default definePlugin({
             signal,
           });
           await saveForm(context, form).catch(() => undefined);
-          return { ...plan, title: "播客脚本" };
+          return { ...plan, title: t("plan.scriptTitle") };
         },
         complete: ({ entity, text, task, signal }) =>
           runtime.jobs.completeNotebook(entity, text, task, signal),

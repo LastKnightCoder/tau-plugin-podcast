@@ -27,6 +27,8 @@ export function createEpisodeNotices(
     } else if (event.id) dismissReview(event.id);
   });
 
+  const t = context.i18n.t;
+
   function announce(episode: Episode, status: "review" | "ready") {
     dismissReview(episode.id);
     if (context.signal.aborted) return;
@@ -39,7 +41,7 @@ export function createEpisodeNotices(
 
     const review = status === "review";
     const action: PluginNotificationAction = {
-      label: review ? "去审稿" : "打开播客",
+      label: review ? t("notice.reviewAction") : t("notice.openAction"),
       primary: true,
       reveal: true,
       onClick: async () => {
@@ -55,8 +57,10 @@ export function createEpisodeNotices(
     try {
       const title = review ? (episode.draft?.title ?? episode.title) : episode.title;
       const notice = context.notifications.send({
-        title: review ? "播客脚本写好了" : "播客已生成",
-        body: review ? `「${title}」等你过一遍再合成` : `「${title}」可以收听了`,
+        title: review ? t("notice.reviewTitle") : t("notice.readyTitle"),
+        body: review
+          ? t("notice.reviewBody", { title })
+          : t("notice.readyBody", { title }),
         sticky: review,
         tone: review ? "neutral" : "ok",
         actions: [action],

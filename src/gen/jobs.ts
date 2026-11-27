@@ -77,11 +77,11 @@ const SOURCE_LABEL: Record<SourceKind, string> = {
   notebook: "Notebook",
 };
 const PHASE_TEXT: Record<LiveProgress["phase"], string> = {
-  script: "写脚本",
-  synth: "合成语音",
-  merge: "合并音频",
-  save: "保存音频",
-  line: "重新合成",
+  script: "job.phase.script",
+  synth: "job.phase.synth",
+  merge: "job.phase.merge",
+  save: "job.phase.save",
+  line: "job.phase.line",
 };
 
 function message(error: unknown) {
@@ -98,6 +98,7 @@ export function createJobs(
   data: EpisodeData,
   notices: ReturnType<typeof createEpisodeNotices>
 ): Jobs {
+  const t = context.i18n.t;
   const listeners = new Set<Listener>();
   const live = new Map<string, LiveProgress>();
   const controllers = new Map<string, AbortController>();
@@ -388,13 +389,13 @@ export function createJobs(
       }));
       if (review) {
         if (updated) notices.announce(updated, "review");
-        task.phase("脚本已写好，等待审稿");
+        task.phase(t("job.phase.scriptDone"));
         return;
       }
       const failure = await execute(id, {
         signal,
         onLive: value => {
-          task.phase(PHASE_TEXT[value.phase]);
+          task.phase(t(PHASE_TEXT[value.phase]));
           task.progress(value.done, value.total);
         },
       });

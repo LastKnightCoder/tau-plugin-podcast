@@ -7,7 +7,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { AudioLines, Maximize2, Plus, Podcast, Search, X } from "lucide-react";
 import type { PluginEntityDescription, PluginPageProps } from "@tau/plugins";
+import { useI18n } from "@tau/plugins";
 import { Button, FilterPill, IconButton, Input, Loading, Tooltip, cn } from "@tau/ui";
+import { messages } from "../i18n";
 import {
   PICKABLE_KINDS,
   SOURCE_KINDS,
@@ -43,6 +45,7 @@ type KindFilter = "all" | SourceKind;
 const LIST_COLUMN = "pc:max-w-[920px] pc:px-8";
 
 export function LibraryPage({ params }: PluginPageProps) {
+  const { t } = useI18n(messages);
   const runtime = useRuntime();
   const episodeId = param(params.episode);
   const reviewing = params.review === "1";
@@ -91,7 +94,7 @@ export function LibraryPage({ params }: PluginPageProps) {
       />
     ) : (
       <div className="pc:text-ink-3 pc:grid pc:h-full pc:place-items-center pc:text-[13px]">
-        这期播客已被删除
+        {t("library.deleted")}
       </div>
     );
   } else {
@@ -168,6 +171,7 @@ function ListView({
   onOpen(episode: Episode): void;
   onReview(episode: Episode): void;
 }) {
+  const { t } = useI18n(messages);
   const runtime = useRuntime();
   const { context } = runtime;
   const [kind, setKind] = useState<KindFilter>("all");
@@ -200,7 +204,7 @@ function ListView({
   const create = async () => {
     const [picked] = await context.app.pick({
       kinds: [...PICKABLE_KINDS],
-      title: "选一篇内容生成播客",
+      title: t("library.pickSource"),
     });
     if (!picked) return;
     requestDialog(runtime, picked.ref as { kind: PickableKind; id: string });
@@ -211,11 +215,15 @@ function ListView({
   const head = (
     <div className="pc:flex pc:items-center pc:gap-2.5 pc:pt-6">
       <div>
-        <h1 className="pc:text-tau-title-lg pc:m-0 pc:font-semibold pc:tracking-[-0.01em]">播客</h1>
+        <h1 className="pc:text-tau-title-lg pc:m-0 pc:font-semibold pc:tracking-[-0.01em]">
+          {t("page.title")}
+        </h1>
         {total !== null && total > 0 && (
           <p className="pc:text-ink-3 pc:m-0 pc:mt-0.5 pc:text-[12.5px]">
-            {total} 期
-            {!list.hasNextPage && totalSeconds ? ` · 共 ${Math.round(totalSeconds / 60)} 分钟` : ""}
+            {t("library.count", { count: total })}
+            {!list.hasNextPage && totalSeconds
+              ? ` · ${t("library.totalMinutes", { count: Math.round(totalSeconds / 60) })}`
+              : ""}
           </p>
         )}
       </div>
@@ -226,13 +234,13 @@ function ListView({
           lead={Search}
           clearable
           value={query}
-          placeholder="搜索标题或原文"
+          placeholder={t("library.search")}
           onChange={event => setQuery(event.target.value)}
           wrapperClassName="pc:w-[220px]"
         />
       )}
       <Button size="sm" variant="primary" icon={Plus} onClick={() => void create()}>
-        新建播客
+        {t("library.new")}
       </Button>
     </div>
   );
@@ -241,7 +249,7 @@ function ListView({
   if (list.isError)
     return (
       <div className="pc:text-ink-3 pc:grid pc:h-full pc:place-items-center pc:text-[13px]">
-        播客读取失败
+        {t("library.loadFailed")}
       </div>
     );
 
@@ -252,12 +260,12 @@ function ListView({
           <span className="pc:bg-accent-soft pc:text-accent-text pc:mb-3.5 pc:inline-grid pc:size-14 pc:place-items-center pc:rounded-[16px]">
             <Podcast size={26} strokeWidth={1.75} />
           </span>
-          <h3 className="pc:m-0 pc:mb-1 pc:text-[15px] pc:font-semibold">还没有播客</h3>
+          <h3 className="pc:m-0 pc:mb-1 pc:text-[15px] pc:font-semibold">{t("library.empty.title")}</h3>
           <p className="pc:text-ink-3 pc:mx-auto pc:mb-4 pc:mt-0 pc:max-w-[360px] pc:text-[12.5px]">
-            在卡片、文章或项目文档的「⋯」菜单里选「生成播客」，把内容变成一期对话，通勤路上听。
+            {t("library.empty.hint")}
           </p>
           <Button size="sm" variant="primary" icon={Plus} onClick={() => void create()}>
-            选一篇内容生成
+            {t("library.empty.create")}
           </Button>
         </div>
       </PinnedScroll>
@@ -282,16 +290,16 @@ function ListView({
                 key={item}
                 active={kind === item}
                 onClick={() => setKind(item)}
-                label={item === "all" ? "全部" : SOURCE_META[item].label}
+                label={item === "all" ? t("filter.all") : t(SOURCE_META[item].key)}
               />
             ))}
           </div>
           <div className="pc:text-ink-3 pc:grid pc:grid-cols-[44px_minmax(0,1fr)_120px_56px_84px_28px] pc:gap-3.5 pc:px-3 pc:pb-1 pc:text-[11.5px]">
             <span />
-            <span>标题 · 原文</span>
-            <span>说话人</span>
-            <span>时长</span>
-            <span>生成于</span>
+            <span>{t("library.header.title")}</span>
+            <span>{t("library.header.speakers")}</span>
+            <span>{t("library.header.duration")}</span>
+            <span>{t("library.header.created")}</span>
             <span />
           </div>
         </>
@@ -313,7 +321,9 @@ function ListView({
         ))}
         {!shown.length && (
           <div className="pc:text-ink-3 pc:py-10 pc:text-center pc:text-[12.5px]">
-            {q ? `没有标题或原文包含「${query.trim()}」的播客` : "这一类还没有播客"}
+            {q
+              ? t("library.noMatch.query", { query: query.trim() })
+              : t("library.noMatch.kind")}
           </div>
         )}
       </div>
@@ -325,7 +335,7 @@ function ListView({
             loading={list.isFetchingNextPage}
             onClick={() => void list.fetchNextPage()}
           >
-            加载更多
+            {t("library.loadMore")}
           </Button>
         </div>
       )}
@@ -352,6 +362,7 @@ function Row({
   onPlay(): void;
   onOpen(): void;
 }) {
+  const { t: tr } = useI18n(messages);
   const runtime = useRuntime();
   const audio = episode.audio!;
   const t = tone(audio.speakers[0]?.tone ?? 1);
@@ -366,7 +377,7 @@ function Row({
     >
       <button
         type="button"
-        aria-label={playLabel({ playing, loading })}
+        aria-label={playLabel({ playing, loading }, tr)}
         onClick={event => {
           event.stopPropagation();
           onPlay();
@@ -391,14 +402,16 @@ function Row({
         <div className="pc:truncate pc:text-[13.5px] pc:font-medium">{episode.title}</div>
         <div className="pc:mt-px pc:flex pc:min-w-0 pc:items-center pc:gap-2">
           <SourceLink episode={episode} state={state} />
-          {gone && <span className="pc:text-ink-3 pc:shrink-0 pc:text-[12px]">· 原文已删除</span>}
+          {gone && (
+            <span className="pc:text-ink-3 pc:shrink-0 pc:text-[12px]">{tr("library.sourceDeleted")}</span>
+          )}
         </div>
       </div>
       <Avatars speakers={audio.speakers} />
       <span className="pc:text-ink-3 pc:text-[12px] pc:tabular-nums">
         {fmtTime(audio.duration)}
       </span>
-      <span className="pc:text-ink-3 pc:text-[12px]">{fmtDate(episode.updatedAt)}</span>
+      <span className="pc:text-ink-3 pc:text-[12px]">{fmtDate(episode.updatedAt, tr)}</span>
       <span onClick={event => event.stopPropagation()}>
         <EpisodeMenu
           episode={episode}
@@ -426,12 +439,13 @@ function Dock({
   onOpen(): void;
   onClose(): void;
 }) {
+  const { t } = useI18n(messages);
   const audio = episode.audio!;
   return (
     <div className="pc:border-line-1 pc:bg-surface pc:flex pc:min-w-0 pc:flex-none pc:flex-wrap pc:items-center pc:gap-x-3 pc:gap-y-2.5 pc:border-t pc:px-[18px] pc:py-2.5">
       <button
         type="button"
-        aria-label={playLabel(playback)}
+        aria-label={playLabel(playback, t)}
         disabled={playback.error}
         onClick={playback.toggle}
         className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-9 pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
@@ -440,7 +454,7 @@ function Dock({
       </button>
       <div className="pc:min-w-0 pc:flex-1 pc:@min-[720px]/library:w-[220px] pc:@min-[720px]/library:flex-none">
         <div className="pc:truncate pc:font-medium">{episode.title}</div>
-        {audioNotice(playback) ?? <SourceLink episode={episode} state={state} />}
+        {audioNotice(playback, t) ?? <SourceLink episode={episode} state={state} />}
       </div>
       <div className="pc:order-last pc:flex pc:min-w-0 pc:basis-full pc:items-center pc:gap-3 pc:@min-[720px]/library:order-none pc:@min-[720px]/library:flex-1 pc:@min-[720px]/library:basis-0">
         <span className="pc:text-ink-3 pc:shrink-0 pc:whitespace-nowrap pc:text-[11.5px] pc:tabular-nums">
@@ -461,13 +475,13 @@ function Dock({
       </div>
       <div className="pc:flex pc:shrink-0 pc:items-center pc:gap-1">
         <RateMenu playback={playback} />
-        <Tooltip content="打开详情">
-          <IconButton aria-label="打开详情" onClick={onOpen}>
+        <Tooltip content={t("library.openDetail")}>
+          <IconButton aria-label={t("library.openDetail")} onClick={onOpen}>
             <Maximize2 {...ICON} />
           </IconButton>
         </Tooltip>
-        <Tooltip content="关闭">
-          <IconButton aria-label="关闭" onClick={onClose}>
+        <Tooltip content={t("library.close")}>
+          <IconButton aria-label={t("library.close")} onClick={onClose}>
             <X {...ICON} />
           </IconButton>
         </Tooltip>

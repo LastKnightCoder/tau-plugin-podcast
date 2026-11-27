@@ -4,21 +4,22 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Pause, Play, Plus, Search, VolumeX, X } from "lucide-react";
-import type { PluginContext, TTSSynthesisSession, TTSVoice } from "@tau/plugins";
+import { useI18n, type PluginContext, type TTSSynthesisSession, type TTSVoice } from "@tau/plugins";
 import { Checkbox, IconButton, Input, Menu, Popover, Spinner, cn, toast } from "@tau/ui";
 import type { GenerationOptions, PodcastFormat, Speaker } from "../data/model";
+import { messages, type MessageKey } from "../i18n";
 import { Avatar, Avatars, ICON } from "./bits";
 
 export const OPTIONS_KEY = "lastOptions";
 const MINUTES = [3, 5, 10, 15] as const;
 const DEFAULT_NAMES = ["林舟", "夏禾", "陈默", "苏晴", "周野"];
-const FORMATS: { key: PodcastFormat; title: string; desc: string; count: number }[] = [
-  { key: "duo", title: "双人对谈", desc: "一问一答，轻松易懂", count: 2 },
-  { key: "panel", title: "圆桌讨论", desc: "三人各执一词，适合有争议的话题", count: 3 },
-  { key: "solo", title: "单人讲述", desc: "像有声书，一个人讲完", count: 1 },
+const FORMATS: { key: PodcastFormat; titleKey: MessageKey; descKey: MessageKey; count: number }[] = [
+  { key: "duo", titleKey: "options.format.duo", descKey: "options.format.duoDesc", count: 2 },
+  { key: "panel", titleKey: "options.format.panel", descKey: "options.format.panelDesc", count: 3 },
+  { key: "solo", titleKey: "options.format.solo", descKey: "options.format.soloDesc", count: 1 },
 ];
-const ROLE_LABEL = (format: PodcastFormat, index: number) =>
-  format === "solo" ? "讲述" : index === 0 ? "主持" : "嘉宾";
+const ROLE_KEY = (format: PodcastFormat, index: number): MessageKey =>
+  format === "solo" ? "options.role.narrator" : index === 0 ? "options.role.host" : "options.role.guest";
 const SAMPLE = "你好，这是我的声音，听起来怎么样？";
 
 const blankSpeaker = (index: number): Speaker => ({
@@ -72,12 +73,14 @@ export const saveForm = (context: PluginContext, form: PodcastForm) =>
     review: form.review,
   });
 
+type Translate = (key: MessageKey, values?: Record<string, string | number | boolean>) => string;
+
 /** 表单不能提交的原因；可以提交时为 null */
-export function formBlocker(form: PodcastForm): string | null {
-  if (form.speakers.some(s => !s.name.trim())) return "每位说话人都要有名字";
+export function formBlocker(t: Translate, form: PodcastForm): string | null {
+  if (form.speakers.some(s => !s.name.trim())) return t("options.blocker.name");
   if (new Set(form.speakers.map(s => s.name.trim())).size !== form.speakers.length)
-    return "说话人的名字不能重复";
-  if (form.speakers.some(s => !s.voiceId)) return "给每位说话人选一个音色";
+    return t("options.blocker.duplicate");
+  if (form.speakers.some(s => !s.voiceId)) return t("options.blocker.voice");
   return null;
 }
 
@@ -112,8 +115,7 @@ export function useVoices(context: PluginContext, enabled: boolean): VoiceState 
         console.error("[播客] 读取音色失败", error);
         setState({
           kind: "no-tts",
-          reason:
-            error instanceof Error ? error.message.replace(/^[A-Z_]+：/, "") : "语音服务不可用",
+          reason: error instanceof Error ? error.message.replace(/^[A-Z_]+：/, "") : "",
         });
       }
     })();
@@ -126,19 +128,20 @@ export function useVoices(context: PluginContext, enabled: boolean): VoiceState 
 }
 
 export function NoTTSNotice({ reason }: { reason: string }) {
+  const { t } = useI18n(messages);
   return (
-    <Notice icon={<VolumeX {...ICON} />} title="还没有可用的语音合成服务">
-      {reason}。播客要把脚本念出来，需要先在插件中心装一个语音插件（如 MiniMax 语音），再到「设置 ›
-      语音」里选好服务。
+    <Notice icon={<VolumeX {...ICON} />} title={t("options.noTts")}>
+      {t("options.noTtsHint", { reason })}
     </Notice>
   );
 }
 
 export function VoicesLoading() {
+  const { t } = useI18n(messages);
   return (
     <div className="pc:text-ink-3 pc:flex pc:items-center pc:justify-center pc:gap-2 pc:py-10 pc:text-[12.5px]">
       <Spinner className="pc:size-3.5" />
-      正在读取音色…
+      {t("options.loadingVoices")}
     </div>
   );
 }
@@ -155,6 +158,7 @@ export function PodcastOptionsForm({
   voices: Extract<VoiceState, { kind: "ready" }>;
   extra?: React.ReactNode;
 }) {
+  const { t } = useI18n(messages);
   const { format, speakers, minutes, review } = form;
   const changeFormat = (next: PodcastFormat) =>
     onChange({ ...form, format: next, speakers: fitSpeakers(speakers, next) });
@@ -163,7 +167,7 @@ export function PodcastOptionsForm({
     setSpeakers(speakers.map((s, i) => (i === index ? { ...s, ...patch } : s)));
   return (
     <>
-      <Field label="形式">
+      <Field label={t("options.format")}>
         <div className="pc:grid pc:grid-cols-3 pc:gap-2">
           {FORMATS.map(item => (
             <button
@@ -177,8 +181,8 @@ export function PodcastOptionsForm({
                   : "pc:border-line-1 pc:hover:bg-surface-hover"
               )}
             >
-              <div className="pc:text-[12.5px] pc:font-medium">{item.title}</div>
-              <div className="pc:text-ink-3 pc:mt-0.5 pc:text-[11.5px]">{item.desc}</div>
+              <div className="pc:text-[12.5px] pc:font-medium">{t(item.titleKey)}</div>
+              <div className="pc:text-ink-3 pc:mt-0.5 pc:text-[11.5px]">{t(item.descKey)}</div>
               <div className="pc:mt-2">
                 <Avatars speakers={fitSpeakers(format === item.key ? speakers : [], item.key)} />
               </div>
@@ -187,7 +191,7 @@ export function PodcastOptionsForm({
         </div>
       </Field>
 
-      <Field label="谁来说" hint="上次的选择会记住">
+      <Field label={t("options.who")} hint={t("options.whoHint")}>
         <div>
           {speakers.map((speaker, index) => (
             <div
@@ -199,13 +203,13 @@ export function PodcastOptionsForm({
                 size="sm"
                 value={speaker.name}
                 maxLength={12}
-                aria-label="说话人名字"
+                aria-label={t("options.speakerName")}
                 onChange={event => updateSpeaker(index, { name: event.target.value })}
               />
               <VoicePicker
                 voices={voices.voices}
                 value={speaker.voiceId}
-                role={ROLE_LABEL(format, index)}
+                role={t(ROLE_KEY(format, index))}
                 session={voices.session}
                 onChange={voice =>
                   updateSpeaker(index, { voiceId: voice.id, voiceName: voice.name })
@@ -213,7 +217,7 @@ export function PodcastOptionsForm({
               />
               {format === "panel" && speakers.length > 3 ? (
                 <IconButton
-                  aria-label="移除"
+                  aria-label={t("options.removeSpeaker")}
                   onClick={() => setSpeakers(speakers.filter((_, i) => i !== index))}
                 >
                   <X {...ICON} />
@@ -230,7 +234,7 @@ export function PodcastOptionsForm({
               className="pc:text-ink-3 pc:hover:text-accent-text pc:flex pc:items-center pc:gap-1.5 pc:py-2 pc:pl-[38px] pc:text-[12.5px]"
             >
               <Plus size={14} strokeWidth={1.75} />
-              再加一位（最多 5 位）
+              {t("options.addSpeaker")}
             </button>
           )}
         </div>
@@ -242,14 +246,14 @@ export function PodcastOptionsForm({
           extra ? "pc:grid-cols-[180px_minmax(0,1fr)]" : "pc:grid-cols-[180px]"
         )}
       >
-        <Field label="时长">
+        <Field label={t("options.minutes")}>
           <Menu
             trigger={
               <button
                 type="button"
                 className="pc:border-line-1 pc:hover:bg-surface-hover pc:rounded-tau-sm pc:flex pc:h-[30px] pc:w-full pc:items-center pc:justify-between pc:border pc:px-2.5 pc:text-[12.5px]"
               >
-                约 {minutes} 分钟
+                {t("options.minutesValue", { count: minutes })}
                 <ChevronDown size={14} strokeWidth={1.75} className="pc:text-ink-3" />
               </button>
             }
@@ -266,7 +270,7 @@ export function PodcastOptionsForm({
                   )
                 }
               >
-                约 {value} 分钟
+                {t("options.minutesValue", { count: value })}
               </Menu.Item>
             ))}
           </Menu>
@@ -277,7 +281,7 @@ export function PodcastOptionsForm({
       <Checkbox
         checked={review}
         onChange={event => onChange({ ...form, review: event.target.checked })}
-        label="脚本写好后先给我看一遍，再合成语音"
+        label={t("options.reviewCheckbox")}
       />
     </>
   );
@@ -337,6 +341,7 @@ function VoicePicker({
   session: TTSSynthesisSession | null;
   onChange(voice: TTSVoice): void;
 }) {
+  const { t } = useI18n(messages);
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [previewing, setPreviewing] = useState<string | null>(null);
@@ -379,7 +384,7 @@ function VoicePicker({
       await element.play();
     } catch (error) {
       setPreviewing(null);
-      toast.error(error instanceof Error ? error.message : "试听失败");
+      toast.error(error instanceof Error ? error.message : t("options.voices.previewFailed"));
     }
   };
 
@@ -409,7 +414,7 @@ function VoicePicker({
       )}
       <button
         type="button"
-        aria-label={`试听${voice.name}`}
+        aria-label={t("options.voices.preview", { name: voice.name })}
         onClick={event => {
           event.stopPropagation();
           void preview(voice);
@@ -446,7 +451,7 @@ function VoicePicker({
           )}
         >
           <span className={cn("pc:min-w-0 pc:flex-1 pc:truncate", !selected && "pc:text-ink-3")}>
-            {selected?.name ?? "选择音色"}
+            {selected?.name ?? t("options.voices.pick")}
           </span>
           <span className="pc:text-ink-3 pc:shrink-0 pc:text-[11px]">{role}</span>
           <ChevronDown size={14} strokeWidth={1.75} className="pc:text-ink-3 pc:shrink-0" />
@@ -459,27 +464,31 @@ function VoicePicker({
             size="sm"
             lead={Search}
             value={query}
-            placeholder="搜索音色"
+            placeholder={t("options.voices.search")}
             onChange={e => setQuery(e.target.value)}
             wrapperClassName="pc:mb-1"
           />
         )}
         {mine.length > 0 && (
-          <div className="pc:text-ink-3 pc:px-2 pc:pb-0.5 pc:pt-1.5 pc:text-[11.5px]">我的音色</div>
+          <div className="pc:text-ink-3 pc:px-2 pc:pb-0.5 pc:pt-1.5 pc:text-[11.5px]">
+            {t("options.voices.mine")}
+          </div>
         )}
         {mine.map(row)}
         {system.length > 0 && (
-          <div className="pc:text-ink-3 pc:px-2 pc:pb-0.5 pc:pt-1.5 pc:text-[11.5px]">服务音色</div>
+          <div className="pc:text-ink-3 pc:px-2 pc:pb-0.5 pc:pt-1.5 pc:text-[11.5px]">
+            {t("options.voices.system")}
+          </div>
         )}
         {system.map(row)}
         {!filtered.length && (
           <div className="pc:text-ink-3 pc:px-2 pc:py-4 pc:text-center pc:text-[12px]">
-            没有匹配的音色
+            {t("options.voices.none")}
           </div>
         )}
       </div>
       <div className="pc:border-line-2 pc:text-ink-3 pc:mt-1 pc:border-t pc:px-2 pc:pb-0.5 pc:pt-1.5 pc:text-[12px]">
-        想用自己的声音？在「设置 › 语音」里克隆后会出现在这里
+        {t("options.voices.cloneHint")}
       </div>
     </Popover>
   );

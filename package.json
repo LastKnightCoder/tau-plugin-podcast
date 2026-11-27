@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@tanstack/react-query": "5.90.16",
-    "@tau/plugins": "npm:@xiongtao.xt/tau-plugins@0.62.0",
+    "@tau/plugins": "file:../../output/plugin-sdk/xiongtao.xt-tau-plugins-0.62.0.tgz",
     "@tau/ui": "npm:@xiongtao.xt/tau-ui@0.6.0",
     "lucide-react": "0.563.0",
     "react": "19.2.0",

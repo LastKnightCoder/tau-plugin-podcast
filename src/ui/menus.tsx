@@ -2,8 +2,10 @@
  * 一期播客的「⋯」菜单与倍速菜单：播客库的行、播放条与详情页共用。
  */
 import { ExternalLink, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
+import { useI18n } from "@tau/plugins";
 import { IconButton, Menu, toast } from "@tau/ui";
 import type { Episode } from "../data/model";
+import { messages } from "../i18n";
 import { requestDialog, useRuntime } from "../runtime";
 import { ICON } from "./bits";
 import { RATES, type Playback } from "./playback";
@@ -19,6 +21,7 @@ export function EpisodeMenu({
   trigger: "row" | "detail";
   onDeleted?(): void;
 }) {
+  const { t } = useI18n(messages);
   const runtime = useRuntime();
   const { context, data } = runtime;
   const busy = episode.status !== "ready";
@@ -35,7 +38,7 @@ export function EpisodeMenu({
       align="end"
       trigger={
         <IconButton
-          aria-label="更多"
+          aria-label={t("common.more")}
           className={
             trigger === "row"
               ? "pc:opacity-0 pc:group-hover:opacity-100 pc:aria-expanded:opacity-100"
@@ -51,7 +54,7 @@ export function EpisodeMenu({
           icon={<ExternalLink {...ICON} />}
           onSelect={() => void context.app.open(episode.source)}
         >
-          {fromNotebook ? "打开 Notebook" : "打开原文"}
+          {fromNotebook ? t("action.openNotebook") : t("action.openOriginal")}
         </Menu.Item>
       )}
       {!gone && !fromNotebook && (
@@ -60,7 +63,7 @@ export function EpisodeMenu({
           disabled={busy}
           onSelect={() => void regenerate()}
         >
-          按原文重新生成
+          {t("action.regenerate")}
         </Menu.Item>
       )}
       <Menu.Separator />
@@ -73,25 +76,26 @@ export function EpisodeMenu({
             .remove(episode.id)
             .then(() => {
               onDeleted?.();
-              toast.success(`已删除「${episode.title}」，可在插件详情页的「最近删除」里恢复`);
+              toast.success(t("toast.deleted", { title: episode.title }));
             })
-            .catch(() => toast.error("删除失败"))
+            .catch(() => toast.error(t("toast.deleteFailed")))
         }
       >
-        删除
+        {t("action.delete")}
       </Menu.Item>
     </Menu>
   );
 }
 
 export function RateMenu({ playback }: { playback: Playback }) {
+  const { t } = useI18n(messages);
   return (
     <Menu
       align="end"
       trigger={
         <button
           type="button"
-          aria-label="播放速度"
+          aria-label={t("menu.rate")}
           className="pc:border-line-1 pc:text-ink-2 pc:hover:bg-hover pc:rounded-[6px] pc:border pc:px-1.5 pc:font-mono pc:text-[11.5px] pc:tabular-nums"
         >
           {playback.rate}×
@@ -100,7 +104,7 @@ export function RateMenu({ playback }: { playback: Playback }) {
     >
       {RATES.map(rate => (
         <Menu.Item key={rate} onSelect={() => playback.setRate(rate)}>
-          {rate}×{rate === playback.rate ? "（当前）" : ""}
+          {rate}×{rate === playback.rate ? t("menu.rateCurrent") : ""}
         </Menu.Item>
       ))}
     </Menu>

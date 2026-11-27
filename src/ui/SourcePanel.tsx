@@ -5,7 +5,9 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight, MoreHorizontal, RefreshCw, Trash2 } from "lucide-react";
 import type { PluginEntityPanelProps } from "@tau/plugins";
+import { useI18n } from "@tau/plugins";
 import { IconButton, Menu, Tooltip, cn, toast } from "@tau/ui";
+import { messages } from "../i18n";
 import { sourceKey, type PickableKind } from "../data/model";
 import { useEpisodeNoticeSurface, useRuntime, useStore } from "../runtime";
 import { ICON, Legend, PlayGlyph, Waveform, audioNotice, fmtTime, playLabel } from "./bits";
@@ -15,6 +17,7 @@ import { usePlayback } from "./playback";
 import { useEpisodeBySource } from "./queries";
 
 export function SourcePanel({ target }: PluginEntityPanelProps) {
+  const { t } = useI18n(messages);
   const runtime = useRuntime();
   const { context, pendingDialog, pages } = runtime;
   const source = target as { kind: PickableKind; id: string };
@@ -55,7 +58,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
 
   const hasJob = episode.status !== "ready";
   const audio = episode.audio;
-  const notice = audioNotice(playback);
+  const notice = audioNotice(playback, t);
 
   return (
     <div className="pc:@container/podcast pc:flex pc:min-w-0 pc:w-full pc:flex-col pc:gap-2">
@@ -65,7 +68,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
           {playback.element}
           <button
             type="button"
-            aria-label={playLabel(playback)}
+            aria-label={playLabel(playback, t)}
             disabled={playback.error}
             onClick={playback.toggle}
             className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-9 pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
@@ -106,15 +109,15 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
             />
           </div>
           <div className="pc:flex pc:shrink-0 pc:items-center pc:gap-1">
-            <Tooltip content="在播客库打开">
-              <IconButton aria-label="在播客库打开" onClick={openLibrary}>
+            <Tooltip content={t("detail.openLibrary")}>
+              <IconButton aria-label={t("detail.openLibrary")} onClick={openLibrary}>
                 <ArrowUpRight {...ICON} />
               </IconButton>
             </Tooltip>
             <Menu
               align="end"
               trigger={
-                <IconButton aria-label="更多">
+                <IconButton aria-label={t("common.more")}>
                   <MoreHorizontal {...ICON} />
                 </IconButton>
               }
@@ -124,7 +127,7 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
                 disabled={hasJob}
                 onSelect={() => setDialog(true)}
               >
-                按原文重新生成
+                {t("action.regenerate")}
               </Menu.Item>
               <Menu.Separator />
               <Menu.Item
@@ -134,11 +137,11 @@ export function SourcePanel({ target }: PluginEntityPanelProps) {
                 onSelect={() =>
                   void runtime.data
                     .remove(episode.id)
-                    .then(() => toast.success("已删除这期播客，可在插件详情页的「最近删除」里恢复"))
-                    .catch(() => toast.error("删除失败"))
+                    .then(() => toast.success(t("toast.deletedSource")))
+                    .catch(() => toast.error(t("toast.deleteFailed")))
                 }
               >
-                删除播客
+                {t("action.deletePodcast")}
               </Menu.Item>
             </Menu>
           </div>

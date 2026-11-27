@@ -4,16 +4,21 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, AudioLines, ChevronDown, Plus, X } from "lucide-react";
+import { useI18n } from "@tau/plugins";
 import { Button, IconButton, Menu, cn, toast } from "@tau/ui";
 import type { Draft, Episode, ScriptLine } from "../data/model";
+import { messages } from "../i18n";
 import { useEpisodeNoticeSurface, useRuntime } from "../runtime";
 import { Avatar, ICON, Legend, tone } from "./bits";
 
 /** 按中文约每分钟 260 字估算 */
-const estimate = (lines: ScriptLine[]) => {
+const estimate = (
+  lines: ScriptLine[],
+  t: (key: "time.minSec", values?: Record<string, string | number | boolean>) => string
+) => {
   const chars = lines.reduce((sum, line) => sum + line.text.length, 0);
   const seconds = Math.round((chars / 260) * 60);
-  return `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
+  return t("time.minSec", { min: Math.floor(seconds / 60), sec: seconds % 60 });
 };
 
 const fitTextareaHeight = (textarea: HTMLTextAreaElement) => {
@@ -53,6 +58,7 @@ function ScriptTextarea({ value, onChange }: { value: string; onChange(value: st
 }
 
 export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): void }) {
+  const { t } = useI18n(messages);
   const { data, jobs, notices } = useRuntime();
   useEpisodeNoticeSurface(candidate => candidate.id === episode.id);
   useEffect(() => notices.dismissReview(episode.id), [notices, episode.id]);
@@ -68,7 +74,7 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
     clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       dirty.current = false;
-      void save(draft).catch(() => toast.error("草稿保存失败"));
+      void save(draft).catch(() => toast.error(t("review.draftSaveFailed")));
     }, 600);
     return () => clearTimeout(timer.current);
   }, [draft]);
@@ -91,15 +97,15 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
     const lines = draft.lines
       .map(line => ({ ...line, text: line.text.trim() }))
       .filter(line => line.text);
-    if (!lines.length) return toast.error("脚本是空的");
+    if (!lines.length) return toast.error(t("review.empty"));
     clearTimeout(timer.current);
     dirty.current = false;
     try {
       await jobs.confirmReview(episode.id, { ...draft, lines });
-      toast.success("开始合成，可以离开这个页面");
+      toast.success(t("review.started"));
       onBack();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "开始合成失败");
+      toast.error(error instanceof Error ? error.message : t("review.startFailed"));
     }
   };
   const discard = async () => {
@@ -112,22 +118,24 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
   return (
     <div className="pc:mx-auto pc:max-w-[760px] pc:px-8 pc:pb-10">
       <div className="pc:bg-surface pc:border-line-2 pc:sticky pc:top-0 pc:z-[3] pc:mb-2.5 pc:flex pc:items-center pc:gap-2 pc:border-b pc:py-3">
-        <IconButton aria-label="返回" onClick={onBack}>
+        <IconButton aria-label={t("review.back")} onClick={onBack}>
           <ArrowLeft {...ICON} />
         </IconButton>
         <div className="pc:min-w-0">
-          <div className="pc:truncate pc:text-[15px] pc:font-semibold">审稿 · {draft.title}</div>
+          <div className="pc:truncate pc:text-[15px] pc:font-semibold">
+            {t("review.title", { title: draft.title })}
+          </div>
           <div className="pc:text-ink-3 pc:flex pc:flex-wrap pc:items-center pc:gap-2 pc:text-[12px]">
-            {draft.lines.length} 句 · 预计 {estimate(draft.lines)}
+            {t("review.meta", { count: draft.lines.length, time: estimate(draft.lines, t) })}
             <Legend speakers={draft.speakers} />
           </div>
         </div>
         <span className="pc:flex-1" />
         <Button size="sm" variant="ghost" onClick={() => void discard()}>
-          放弃
+          {t("review.discard")}
         </Button>
         <Button size="sm" variant="primary" icon={AudioLines} onClick={() => void confirm()}>
-          开始合成
+          {t("review.start")}
         </Button>
       </div>
 
@@ -173,7 +181,7 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
               }
             />
             <IconButton
-              aria-label="删除这句"
+              aria-label={t("review.deleteLine")}
               className="pc:opacity-0 pc:group-hover:opacity-100"
               onClick={() => update(lines => lines.filter((_, j) => j !== index))}
             >
@@ -200,11 +208,9 @@ export function ReviewView({ episode, onBack }: { episode: Episode; onBack(): vo
         className="pc:text-ink-3 pc:hover:text-accent-text pc:flex pc:items-center pc:gap-1.5 pc:px-1.5 pc:py-2 pc:text-[12.5px]"
       >
         <Plus size={14} strokeWidth={1.75} />
-        加一句
+        {t("review.addLine")}
       </button>
-      <div className="pc:text-ink-3 pc:px-1.5 pc:pt-1.5 pc:text-[12px]">
-        点说话人换人 · 编辑自动保存，关掉也能回来接着审
-      </div>
+      <div className="pc:text-ink-3 pc:px-1.5 pc:pt-1.5 pc:text-[12px]">{t("review.hint")}</div>
     </div>
   );
 }

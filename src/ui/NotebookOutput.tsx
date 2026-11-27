@@ -8,7 +8,9 @@ import type {
   PluginNotebookOutputOptionsProps,
   PluginNotebookOutputViewProps,
 } from "@tau/plugins";
+import { useI18n } from "@tau/plugins";
 import { Loading } from "@tau/ui";
+import { messages } from "../i18n";
 import { readEpisode } from "../data/model";
 import { useRuntime } from "../runtime";
 import { DetailView } from "./DetailView";
@@ -32,6 +34,7 @@ export function NotebookOptions({
   onChange,
   setBlocker,
 }: PluginNotebookOutputOptionsProps) {
+  const { t } = useI18n(messages);
   const [form, setForm] = useState<PodcastForm | null>(null);
   const voices = useVoices(context, true);
   const report = useRef({ onChange, setBlocker });
@@ -51,10 +54,10 @@ export function NotebookOptions({
     if (form) report.current.onChange(trimForm(form) as unknown as JsonValue);
     report.current.setBlocker(
       voices.kind === "no-tts"
-        ? "还没有可用的语音合成服务"
+        ? t("options.noTts")
         : voices.kind === "loading" || !form
-          ? "正在读取音色"
-          : formBlocker(form)
+          ? t("options.loadingVoicesShort")
+          : (formBlocker(t, form) ?? "")
     );
   }, [form, voices.kind]);
 

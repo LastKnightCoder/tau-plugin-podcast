@@ -15,9 +15,10 @@ import {
   RotateCcw,
   RotateCw,
 } from "lucide-react";
-import type { PluginEntityDescription } from "@tau/plugins";
+import { useI18n, type PluginEntityDescription } from "@tau/plugins";
 import { Button, IconButton, Spinner, Tooltip, cn, toast } from "@tau/ui";
 import type { Episode } from "../data/model";
+import { messages } from "../i18n";
 import { lineAt } from "../gen/script";
 import { requestDialog, useEpisodeNoticeSurface, useLive, useRuntime } from "../runtime";
 import {
@@ -56,6 +57,7 @@ export function DetailView({
   /** 嵌在 Notebook 阅读区：不显示「全部播客」与来源卡片，onBack 打开播客库 */
   embedded?: boolean;
 }) {
+  const { t } = useI18n(messages);
   const runtime = useRuntime();
   const { context, data, jobs } = runtime;
   useEpisodeNoticeSurface(candidate => candidate.id === episode.id);
@@ -93,22 +95,22 @@ export function DetailView({
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "导出失败");
+      toast.error(error instanceof Error ? error.message : t("detail.exportFailed"));
     }
   };
   const redo = async () => {
     if (!editing || !audio) return;
     const text = editing.text.trim();
-    if (!text) return toast.error("这一句不能为空");
+    if (!text) return toast.error(t("detail.lineEmpty"));
     if (text === audio.lines[editing.index]?.text) return setEditing(null);
     const index = editing.index;
     setEditing(null);
     try {
       if (playback.playing) playback.toggle();
       await jobs.redoLine(episode.id, index, text, await playback.blob());
-      toast.success("这一句已重新合成");
+      toast.success(t("detail.lineRegenerated"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "重新合成失败");
+      toast.error(error instanceof Error ? error.message : t("detail.lineRegenerateFailed"));
     }
   };
 
@@ -120,18 +122,18 @@ export function DetailView({
       <div className="pc:flex pc:items-center pc:gap-1.5 pc:pt-5">
         {embedded ? (
           <Button size="sm" variant="ghost" icon={ArrowUpRight} onClick={onBack}>
-            在播客库打开
+            {t("detail.openLibrary")}
           </Button>
         ) : (
           <Button size="sm" variant="ghost" icon={ArrowLeft} onClick={onBack}>
-            全部播客
+            {t("detail.allEpisodes")}
           </Button>
         )}
         <span className="pc:flex-1" />
         {audio && (
-          <Tooltip content="导出音频">
+          <Tooltip content={t("detail.exportAudio")}>
             <IconButton
-              aria-label="导出音频"
+              aria-label={t("detail.exportAudio")}
               disabled={!playback.ready}
               onClick={() => void download()}
             >
@@ -147,12 +149,12 @@ export function DetailView({
           autoFocus
           defaultValue={episode.title}
           maxLength={100}
-          aria-label="播客标题"
+          aria-label={t("detail.ariaTitle")}
           onBlur={event => {
             setRenaming(false);
             void data
               .rename(episode.id, event.currentTarget.value)
-              .catch(() => toast.error("改名失败"));
+              .catch(() => toast.error(t("detail.renameFailed")));
           }}
           onKeyDown={event => {
             if (event.key === "Enter") event.currentTarget.blur();
@@ -161,7 +163,7 @@ export function DetailView({
         />
       ) : (
         <h1
-          title="点击改名"
+          title={t("detail.renameHint")}
           onClick={() => setRenaming(true)}
           className="pc:mb-1.5 pc:mt-2 pc:break-words pc:cursor-text pc:text-[22px] pc:font-semibold pc:leading-[1.35]"
         >
@@ -170,8 +172,8 @@ export function DetailView({
       )}
       <div className="pc:text-ink-3 pc:flex pc:flex-wrap pc:items-center pc:gap-x-3.5 pc:gap-y-1.5 pc:text-[12.5px]">
         {audio && <span className="pc:tabular-nums">{fmtTime(audio.duration)}</span>}
-        {audio && <span>{audio.lines.length} 句</span>}
-        <span>{fmtDate(episode.updatedAt)}生成</span>
+        {audio && <span>{t("detail.lineCount", { count: audio.lines.length })}</span>}
+        <span>{t("detail.generatedAt", { date: fmtDate(episode.updatedAt, t) })}</span>
         {audio && <Legend speakers={audio.speakers} />}
       </div>
 
@@ -187,10 +189,10 @@ export function DetailView({
           </span>
           <div className="pc:min-w-0 pc:flex-1 pc:basis-[180px]">
             <div className={cn("pc:truncate pc:font-medium", gone && "pc:text-ink-3")}>
-              {sourceTitle || "原文"}
+              {sourceTitle || t("detail.sourceFallback")}
             </div>
             <div className="pc:text-ink-3 pc:text-[12px]">
-              {gone ? "原文已删除，这期播客还能继续听" : SOURCE_META[episode.source.kind].label}
+              {gone ? t("detail.sourceDeleted") : t(SOURCE_META[episode.source.kind].key)}
             </div>
           </div>
           {!gone && (
@@ -203,11 +205,11 @@ export function DetailView({
                   disabled={busy}
                   onClick={() => void regenerate()}
                 >
-                  按原文重新生成
+                  {t("action.regenerate")}
                 </Button>
               )}
               <Button size="sm" onClick={() => void context.app.open(episode.source)}>
-                {fromNotebook ? "打开 Notebook" : "打开原文"}
+                {fromNotebook ? t("action.openNotebook") : t("action.openOriginal")}
                 <ArrowUpRight size={14} strokeWidth={1.75} />
               </Button>
             </>
@@ -227,7 +229,7 @@ export function DetailView({
             <div className="pc:flex pc:items-center pc:gap-3.5">
               <button
                 type="button"
-                aria-label={playLabel(playback)}
+                aria-label={playLabel(playback, t)}
                 disabled={playback.error}
                 onClick={playback.toggle}
                 className="pc:bg-accent pc:hover:bg-accent-hover pc:text-ink-inverse pc:grid pc:size-[46px] pc:shrink-0 pc:place-items-center pc:rounded-full pc:disabled:opacity-50"
@@ -250,17 +252,17 @@ export function DetailView({
               </span>
             </div>
             <div className="pc:mt-2 pc:flex pc:items-center pc:gap-1">
-              <Tooltip content="后退 15 秒">
+              <Tooltip content={t("detail.back15")}>
                 <IconButton
-                  aria-label="后退 15 秒"
+                  aria-label={t("detail.back15")}
                   onClick={() => playback.seek(playback.time - 15)}
                 >
                   <RotateCcw {...ICON} />
                 </IconButton>
               </Tooltip>
-              <Tooltip content="前进 15 秒">
+              <Tooltip content={t("detail.forward15")}>
                 <IconButton
-                  aria-label="前进 15 秒"
+                  aria-label={t("detail.forward15")}
                   onClick={() => playback.seek(playback.time + 15)}
                 >
                   <RotateCw {...ICON} />
@@ -270,11 +272,14 @@ export function DetailView({
                 <RateMenu playback={playback} />
               </span>
               <span className="pc:flex-1" />
-              {audioNotice(playback)}
+              {audioNotice(playback, t)}
             </div>
           </div>
           <h3 className="pc:mb-2 pc:mt-[22px] pc:flex pc:items-center pc:gap-2 pc:text-[13px] pc:font-semibold">
-            脚本<span className="pc:text-ink-3 pc:text-[12px] pc:font-normal">跟随播放高亮</span>
+            {t("detail.script")}
+            <span className="pc:text-ink-3 pc:text-[12px] pc:font-normal">
+              {t("detail.scriptFollowsHint")}
+            </span>
           </h3>
         </>
       )}
@@ -285,7 +290,7 @@ export function DetailView({
     <div ref={listRef}>
       {audio.lines.map((line, index) => {
         const speaker = audio.speakers[line.speaker];
-        const t = tone(speaker?.tone ?? 1);
+        const palette = tone(speaker?.tone ?? 1);
         const isEditing = editing?.index === index;
         return (
           <div
@@ -306,7 +311,7 @@ export function DetailView({
               <div
                 className={cn(
                   "pc:flex pc:items-baseline pc:gap-2 pc:text-[12px] pc:font-semibold",
-                  t.text
+                  palette.text
                 )}
               >
                 {speaker?.name}
@@ -325,11 +330,11 @@ export function DetailView({
                   />
                   <div className="pc:mt-1.5 pc:flex pc:items-center pc:gap-1.5">
                     <span className="pc:text-ink-3 pc:text-[12px]">
-                      只重新合成这一句，其余不动；时间轴自动顺延
+                      {t("detail.lineRegenHint")}
                     </span>
                     <span className="pc:flex-1" />
                     <Button size="sm" variant="ghost" onClick={() => setEditing(null)}>
-                      取消
+                      {t("common.cancel")}
                     </Button>
                     <Button
                       size="sm"
@@ -337,7 +342,7 @@ export function DetailView({
                       icon={AudioLines}
                       onClick={() => void redo()}
                     >
-                      重新合成
+                      {t("detail.regenerate")}
                     </Button>
                   </div>
                 </>
@@ -356,7 +361,7 @@ export function DetailView({
                   {redoing === index && (
                     <span className="pc:text-ink-3 pc:ml-2 pc:inline-flex pc:items-center pc:gap-1 pc:text-[12px]">
                       <Spinner className="pc:size-3" />
-                      正在重新合成
+                      {t("detail.regenerating")}
                     </span>
                   )}
                 </div>
@@ -364,9 +369,9 @@ export function DetailView({
             </div>
             {!isEditing && (
               <div className="pc:flex pc:gap-0.5 pc:self-start pc:opacity-0 pc:group-hover:opacity-100">
-                <Tooltip content="从这里播">
+                <Tooltip content={t("detail.playFrom")}>
                   <IconButton
-                    aria-label="从这里播"
+                    aria-label={t("detail.playFrom")}
                     disabled={!playback.ready}
                     onClick={() => {
                       playback.seek(line.start);
@@ -376,9 +381,9 @@ export function DetailView({
                     <Play size={14} strokeWidth={1.75} />
                   </IconButton>
                 </Tooltip>
-                <Tooltip content="改这句并重新合成">
+                <Tooltip content={t("detail.editLine")}>
                   <IconButton
-                    aria-label="改这句并重新合成"
+                    aria-label={t("detail.editLine")}
                     disabled={busy || !playback.ready}
                     onClick={() => setEditing({ index, text: line.text })}
                   >

@@ -14,17 +14,21 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FadeScroll, cn, toast } from "@tau/ui";
-import type { PluginEntityDescription } from "@tau/plugins";
+import { useI18n, type PluginEntityDescription } from "@tau/plugins";
 import type { Episode, ScriptLine, SourceKind, Speaker } from "../data/model";
+import { messages, type MessageKey } from "../i18n";
 import { useRuntime } from "../runtime";
 import type { Playback } from "./playback";
 
-export const SOURCE_META: Record<SourceKind, { label: string; icon: LucideIcon }> = {
-  card: { label: "卡片", icon: Layers },
-  article: { label: "文章", icon: FileText },
-  document: { label: "项目文档", icon: FolderKanban },
-  notebook: { label: "Notebook", icon: FlaskConical },
+export const SOURCE_META: Record<SourceKind, { key: MessageKey; icon: LucideIcon }> = {
+  card: { key: "kind.card", icon: Layers },
+  article: { key: "kind.article", icon: FileText },
+  document: { key: "kind.document", icon: FolderKanban },
+  notebook: { key: "kind.notebook", icon: FlaskConical },
 };
+
+export const kindLabel = (t: (key: MessageKey, values?: Record<string, string | number | boolean>) => string, kind: SourceKind) =>
+  t(SOURCE_META[kind].key);
 
 /** tag 色板：文字 / 软底 / 实色，类名写全以便 Tailwind 扫描 */
 export const TONE = {
@@ -43,11 +47,14 @@ export function fmtTime(seconds: number) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function fmtDate(ms: number) {
+export function fmtDate(
+  ms: number,
+  t: (key: MessageKey, values?: Record<string, string | number | boolean>) => string
+) {
   const date = new Date(ms);
   const now = new Date();
-  const md = `${date.getMonth() + 1} 月 ${date.getDate()} 日`;
-  return date.getFullYear() === now.getFullYear() ? md : `${date.getFullYear()} 年 ${md}`;
+  const values = { year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() };
+  return date.getFullYear() === now.getFullYear() ? t("date.md", values) : t("date.ymd", values);
 }
 
 export function Avatar({ speaker, size = "sm" }: { speaker: Speaker; size?: "sm" | "md" }) {
@@ -181,15 +188,17 @@ export function SourceLink({
   className?: string;
 }) {
   const { context } = useRuntime();
+  const { t } = useI18n(messages);
   const meta = SOURCE_META[episode.source.kind];
+  const kind = t(meta.key);
   const Icon = meta.icon;
   const gone = state?.status === "missing";
-  const title = (state?.status === "ok" && state.title) || episode.sourceTitle || meta.label;
-  const label = withKind ? `${meta.label} · ${title}` : title;
+  const title = (state?.status === "ok" && state.title) || episode.sourceTitle || kind;
+  const label = withKind ? `${kind} · ${title}` : title;
   if (gone)
     return (
       <span
-        title="原文已删除"
+        title={t("library.sourceDeleted")}
         className={cn(
           "pc:text-ink-3 pc:inline-flex pc:min-w-0 pc:max-w-full pc:items-center pc:gap-[5px] pc:text-[12px] pc:line-through",
           className
@@ -202,12 +211,12 @@ export function SourceLink({
   return (
     <button
       type="button"
-      title="打开原文"
+      title={t("action.openOriginal")}
       onClick={event => {
         event.stopPropagation();
         context.app.open(episode.source).catch(error => {
           console.error(error);
-          toast.error("原文打不开，可能已被删除");
+          toast.error(t("toast.openFailed"));
         });
       }}
       className={cn(
@@ -241,22 +250,27 @@ export function PlayGlyph({
 }
 
 /** 播放键的读屏文案：还没开播时再点是取消 */
-export const playLabel = ({ playing, loading }: { playing: boolean; loading: boolean }) =>
-  playing ? "暂停" : loading ? "取消播放" : "播放";
+export const playLabel = (
+  { playing, loading }: { playing: boolean; loading: boolean },
+  t: (key: MessageKey) => string
+) => (playing ? t("player.pause") : loading ? t("player.cancelPlay") : t("player.play"));
 
 /** 加载进度或失败的一行提示；正常时返回 null，调用方显示原来的内容 */
-export function audioNotice(playback: Playback) {
+export function audioNotice(
+  playback: Playback,
+  t: (key: MessageKey, values?: Record<string, string | number | boolean>) => string
+) {
   if (playback.error)
     return (
       <span className="pc:text-danger pc:block pc:min-w-0 pc:truncate pc:text-[12px]">
-        音频加载失败
+        {t("player.loadFailed")}
       </span>
     );
   if (!playback.showLoading) return null;
   const percent = Math.round(playback.buffered * 100);
   return (
     <span className="pc:text-ink-3 pc:block pc:min-w-0 pc:truncate pc:text-[12px] pc:tabular-nums">
-      正在加载音频{percent > 0 ? ` ${percent}%` : "…"}
+      {t("player.loading", { progress: percent > 0 ? ` ${percent}%` : "…" })}
     </span>
   );
 }
