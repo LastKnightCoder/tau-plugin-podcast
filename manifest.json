@@ -4,11 +4,23 @@
   "description": "把卡片、文章、项目文档和 Notebook 资料改写成一期多人对话播客，在播客库里收听、管理并跳回原文。",
   "categories": ["page"],
   "keywords": ["播客", "朗读", "对话", "听书"],
+  "locales": ["zh-CN", "zh-TW", "en-US"],
+  "i18n": {
+    "zh-TW": {
+      "description": "把卡片、文章、專案文件和 Notebook 資料改寫成一期多人對話播客，在播客庫裡收聽、管理並跳回原文。",
+      "keywords": ["播客", "朗讀", "對話", "聽書"]
+    },
+    "en-US": {
+      "name": "Podcast",
+      "description": "Turn cards, articles, project documents, and Notebook sources into multi-speaker podcast episodes you can play, manage, and jump back to the source from.",
+      "keywords": ["podcast", "read aloud", "dialogue", "audio"]
+    }
+  },
   "permissions": ["cards:read", "articles:read", "documents:read", "tts:synthesize"],
-  "version": "0.3.4",
+  "version": "0.3.5",
   "targets": {
     "desktop": {
-      "minAppVersion": "0.64.1"
+      "minAppVersion": "0.68.0"
     }
   }
 }

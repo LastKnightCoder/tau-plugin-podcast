@@ -18,6 +18,18 @@ import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
 import { isBuiltin } from "node:module";
 
+const LOCALIZED_README_PATTERN = /^README\.([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*)\.md$/;
+
+function parseLocalizedReadmeFilename(fileName) {
+  const match = LOCALIZED_README_PATTERN.exec(fileName);
+  if (!match || match[1].length > 35) return null;
+  try {
+    return new Intl.Locale(match[1]).toString();
+  } catch {
+    return null;
+  }
+}
+
 const manifest = JSON.parse(await readFile("manifest.json", "utf8"));
 
 async function collectSkills(staging) {
@@ -76,6 +88,19 @@ try {
   if (typeof manifest.description !== "string" || !manifest.description.trim())
     throw new Error("manifest.description 必须为非空简介");
   await writeFile(path.join(staging, "README.md"), readme);
+  const localizedReadmes = new Map();
+  for (const entry of await readdir(".", { withFileTypes: true })) {
+    const locale = parseLocalizedReadmeFilename(entry.name);
+    if (!locale) continue;
+    if ((await lstat(entry.name)).isSymbolicLink() || !entry.isFile())
+      throw new Error(`多语言说明必须是普通文件：${entry.name}`);
+    if (localizedReadmes.has(locale))
+      throw new Error(`多语言说明存在重复语言：${entry.name}`);
+    const content = await readFile(entry.name, "utf8");
+    if (!content.trim()) throw new Error(`${entry.name} 不能为空`);
+    localizedReadmes.set(locale, entry.name);
+    await writeFile(path.join(staging, `README.${locale}.md`), content);
+  }
   for (const name of ["LICENSE", "CHANGELOG.md"]) {
     try {
       await writeFile(path.join(staging, name), await readFile(name));
@@ -137,12 +162,19 @@ try {
     integrity[file] = createHash("sha256")
       .update(await readFile(path.join(staging, file)))
       .digest("hex");
-  const packaged = buildPortablePluginManifest(manifest, {
+  const basePackaged = buildPortablePluginManifest(manifest, {
     main: "main.js",
     integrity,
     ...(styles ? { styles: "main.css" } : {}),
     ...(skills.ids.length ? { skills: skills.ids } : {}),
   });
+  const packaged = {
+    ...basePackaged,
+    ...(basePackaged.i18n === undefined && manifest.i18n ? { i18n: manifest.i18n } : {}),
+    ...(basePackaged.locales === undefined && manifest.locales
+      ? { locales: manifest.locales }
+      : {}),
+  };
   await writeFile(path.join(staging, "manifest.json"), JSON.stringify(packaged, null, 2));
   const destination = path.resolve("dist", `${manifest.version}-${buildId}`);
   await rename(staging, destination);
