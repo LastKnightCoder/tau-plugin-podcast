@@ -29,17 +29,16 @@ export function createEpisodeNotices(
 
   const t = context.i18n.t;
 
-  function announce(episode: Episode, status: "review" | "ready") {
+  function announce(
+    episode: Episode,
+    status: "review" | "ready" | "failed",
+    errorMessage?: string
+  ) {
     dismissReview(episode.id);
     if (context.signal.aborted) return;
-    if (
-      document.visibilityState === "visible" &&
-      document.hasFocus() &&
-      [...surfaces].some(matches => matches(episode))
-    )
-      return;
 
     const review = status === "review";
+    const failed = status === "failed";
     const action: PluginNotificationAction = {
       label: review ? t("notice.reviewAction") : t("notice.openAction"),
       primary: true,
@@ -56,15 +55,23 @@ export function createEpisodeNotices(
     };
     try {
       const title = review ? (episode.draft?.title ?? episode.title) : episode.title;
-      const notice = context.notifications.send({
-        title: review ? t("notice.reviewTitle") : t("notice.readyTitle"),
-        body: review
-          ? t("notice.reviewBody", { title })
-          : t("notice.readyBody", { title }),
-        sticky: review,
-        tone: review ? "neutral" : "ok",
+      const options = {
+        isOnSurface: () => [...surfaces].some(matches => matches(episode)),
+        title: failed
+          ? t("notice.failedTitle")
+          : review
+            ? t("notice.reviewTitle")
+            : t("notice.readyTitle"),
+        body: failed
+          ? errorMessage || t("notice.failedBody", { title })
+          : review
+            ? t("notice.reviewBody", { title })
+            : t("notice.readyBody", { title }),
+        sticky: review || failed,
+        tone: failed ? ("danger" as const) : review ? ("neutral" as const) : ("ok" as const),
         actions: [action],
-      });
+      };
+      const notice = context.notifications.send(options);
       if (review) pendingReviews.set(episode.id, notice);
     } catch (error) {
       if (!context.signal.aborted) console.error("[播客] 发送通知失败", error);

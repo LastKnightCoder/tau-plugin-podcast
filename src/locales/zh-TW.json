@@ -154,5 +154,13 @@
   "player.loadFailed": "音訊載入失敗",
   "player.loading": "正在載入音訊{{progress}}",
   "date.md": "{{month}} 月 {{day}} 日",
-  "date.ymd": "{{year}} 年 {{month}} 月 {{day}} 日"
+  "date.ymd": "{{year}} 年 {{month}} 月 {{day}} 日",
+  "notice.reviewTitle": "Podcast 腳本已寫好",
+  "notice.reviewBody": "「{{title}}」等待你審稿後開始合成",
+  "notice.reviewAction": "去審稿",
+  "notice.readyTitle": "Podcast 已生成",
+  "notice.readyBody": "「{{title}}」已準備好收聽",
+  "notice.openAction": "檢視",
+  "notice.failedTitle": "Podcast 生成失敗",
+  "notice.failedBody": "「{{title}}」生成失敗，點擊檢視詳情"
 }

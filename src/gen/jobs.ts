@@ -284,14 +284,17 @@ export function createJobs(
       console.error("[播客] 生成失败", error);
       const total = live.get(id)?.total ?? 0;
       const done = live.get(id)?.done ?? 0;
-      await data
+      const failureMessage = message(error);
+      const failed = await data
         .patch(id, () => ({
           status: "failed",
-          error: message(error),
+          error: failureMessage,
           progress: total ? { done, total } : null,
         }))
-        .catch(() => undefined);
-      return message(error);
+        .catch(() => null);
+      // Notebook 入口由宿主任务统一发失败通知，独立播客任务在此发通知避免遗漏
+      if (!outer && failed) notices.announce(failed, "failed", failureMessage);
+      return failureMessage;
     } finally {
       controllers.delete(id);
       setLive(id, null);

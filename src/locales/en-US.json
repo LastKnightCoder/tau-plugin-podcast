@@ -158,5 +158,13 @@
   "player.loadFailed": "Audio failed to load",
   "player.loading": "Loading audio{{progress}}",
   "date.md": "{{month}}/{{day}}",
-  "date.ymd": "{{month}}/{{day}}/{{year}}"
+  "date.ymd": "{{month}}/{{day}}/{{year}}",
+  "notice.reviewTitle": "Podcast script ready",
+  "notice.reviewBody": "\"{{title}}\" is ready for review before synthesis",
+  "notice.reviewAction": "Review",
+  "notice.readyTitle": "Podcast ready",
+  "notice.readyBody": "\"{{title}}\" is ready to listen",
+  "notice.openAction": "View",
+  "notice.failedTitle": "Podcast generation failed",
+  "notice.failedBody": "Failed to generate \"{{title}}\". Click to view details."
 }
